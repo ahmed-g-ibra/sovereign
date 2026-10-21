@@ -1,0 +1,7 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Run a probe
+    url: https://github.com/ahmed-g-ibra/sovereign#running-the-fleet-locally
+    about: >-
+      Measurements get better with more vantage points. The agent is one
+      binary, needs no root, and measures outbound only.

@@ -1,0 +1,57 @@
+name: A residency entry is wrong
+description: A legal summary that misreads the instrument, or is out of date
+labels: ["residency"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every residency entry is currently marked **draft**: written from
+        secondary sources and not checked against the instruments. Corrections
+        are the point of publishing them.
+
+        A correction needs a primary source. That is the standard the entries
+        themselves are held to, so it is the standard for changing them.
+
+  - type: input
+    id: country
+    attributes:
+      label: Country
+      placeholder: Oman, Saudi Arabia, UAE...
+    validations:
+      required: true
+
+  - type: textarea
+    id: claim
+    attributes:
+      label: Which claim is wrong
+      description: Quote the sentence or field from the entry.
+    validations:
+      required: true
+
+  - type: textarea
+    id: correct
+    attributes:
+      label: What it should say
+    validations:
+      required: true
+
+  - type: input
+    id: source
+    attributes:
+      label: Primary source
+      description: >-
+        A link to the instrument, the regulation, or the regulator's own
+        publication. Law-firm summaries are helpful context but are not enough
+        on their own — they are what produced the error.
+      placeholder: https://...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: capacity
+    attributes:
+      label: Are you writing as a practitioner in this jurisdiction?
+      description: Not required. It affects whether an entry can move past "reviewed".
+      options:
+        - "No"
+        - "Yes"

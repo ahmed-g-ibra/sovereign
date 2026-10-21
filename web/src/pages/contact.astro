@@ -28,23 +28,18 @@ import { meta, probes } from '../lib/data.js';
     claim they fixed. Private email cannot do that.
   </p>
 
+  <h2>Something that should not start in public</h2>
   {contactEmail ? (
-    <>
-      <h2>Private contact</h2>
-      <p>
-        For anything that should not start in public — a legal correction, a
-        security report, a network operator asking about our probing — write to{' '}
-        <a href={`mailto:${contactEmail}`}>{contactEmail}</a>.
-      </p>
-    </>
+    <p>
+      A legal correction, a security report, or a network operator asking about
+      our probing: write to <a href={`mailto:${contactEmail}`}>{contactEmail}</a>.
+    </p>
   ) : (
-    <>
-      <h2>Private contact</h2>
-      <p class="muted">
-        No private address is published in this build. Use GitHub issues, or
-        set <code>PUBLIC_CONTACT_EMAIL</code> at build time to publish one.
-      </p>
-    </>
+    <p>
+      There is no private channel yet. If you need one — a security report, or
+      a correction you would rather not raise publicly — open an issue saying
+      so without the details, and we will find a way to take it off-list.
+    </p>
   )}
 
   <h2>If you operate a network we measure</h2>
@@ -55,9 +50,9 @@ import { meta, probes } from '../lib/data.js';
     endpoint we touch.
   </p>
   <p>
-    If our traffic is a problem for you, open an issue or write to us and we
-    will stop measuring your network. We are measuring the internet, not
-    testing anyone's patience.
+    If our traffic is a problem for you, open an issue and we will stop
+    measuring your network. We are measuring the internet, not testing
+    anyone's patience.
   </p>
 
   <h2>Run a probe</h2>

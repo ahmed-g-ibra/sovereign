@@ -1,0 +1,43 @@
+name: A measurement looks wrong
+description: Latency, loss or a network path that does not match what you see
+labels: ["measurement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for checking our numbers — that is exactly what they are
+        published for. Measurements from one vantage point are easy to get
+        wrong, and a contradicting observation is useful even if it turns out
+        we were right.
+
+  - type: input
+    id: target
+    attributes:
+      label: Which region or endpoint
+      placeholder: aws-me-central-1, or s3.me-central-1.amazonaws.com
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you see, and what we show
+      description: Roughly what you measure, and which figure on the site disagrees.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Your own output, if you have it
+      description: >-
+        ping, traceroute, curl timings — anything. Paste it as text rather than
+        a screenshot so it is searchable.
+      render: shell
+
+  - type: input
+    id: vantage
+    attributes:
+      label: Where you are measuring from
+      description: Country and ISP is enough. Do not paste your public IP.
+      placeholder: Oman, Awasr
