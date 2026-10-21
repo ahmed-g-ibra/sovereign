@@ -1,0 +1,25 @@
+# Linux probe host (Raspberry Pi, VPS). Copy to /etc/systemd/system/,
+# edit the paths and user, then:
+#   systemctl daemon-reload && systemctl enable --now sovereign-probe
+[Unit]
+Description=Sovereign latency probe
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sovereign
+WorkingDirectory=/opt/sovereign
+ExecStart=/opt/sovereign/probe -server https://CHANGEME -state /var/lib/sovereign
+Restart=always
+RestartSec=30
+
+# The agent needs outbound network and its own state directory. Nothing else.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+StateDirectory=sovereign
+
+[Install]
+WantedBy=multi-user.target

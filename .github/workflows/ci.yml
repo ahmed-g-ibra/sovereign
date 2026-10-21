@@ -82,6 +82,9 @@ jobs:
       - name: install
         run: uv sync --extra dev
 
+      - name: knowledge base
+        run: uv run sovereign knowledge check
+
       - name: test
         run: uv run pytest -q
 

@@ -1,0 +1,126 @@
+# Residency rules as data.
+#
+# A rule maps (user country, data class) to an obligation and a constraint on
+# where the data may live. Rules carry a citation into knowledge/residency/,
+# and inherit that entry's status: a rule citing a draft entry produces a draft
+# answer, and the advisor says so.
+#
+# Verdicts:
+#   allowed      -- no obligation this rule knows of
+#   conditional  -- permitted if the listed obligations are met
+#   localised    -- must stay inside requires_region_in
+#   unknown      -- we do not know, and will not guess
+version: 1
+updated_at: 2026-10-21
+
+obligations:
+  transfer_risk_assessment:
+    label: Transfer risk assessment
+    detail: >-
+      Assess the risk to data subjects before transferring abroad, and keep the
+      assessment on file.
+  safeguards_or_adequacy:
+    label: Safeguards or adequacy
+    detail: >-
+      Rely either on the regulator's adequacy determination for the destination
+      or on contractual safeguards with the processor.
+  authority_approval:
+    label: Regulator approval
+    detail: >-
+      Obtain approval from the data protection authority before transferring to
+      a country outside any approved list.
+  consent_or_legal_basis:
+    label: Consent or other legal basis
+    detail: >-
+      Establish a lawful basis for the transfer, which may include the data
+      subject's explicit consent.
+  sector_check:
+    label: Sector overlay check
+    detail: >-
+      General data protection law is not the whole picture. Financial, health
+      and government workloads commonly carry separate in-country requirements
+      from their own regulators.
+
+rules:
+  - id: om-personal-cross-border
+    countries: [OM]
+    data_classes: [personal, sensitive]
+    verdict: conditional
+    obligations: [consent_or_legal_basis, sector_check]
+    citation: OM
+    note: >-
+      Oman permits transfer subject to conditions. With no measurable public
+      cloud region in-country, every Omani workload is a cross-border question.
+
+  - id: sa-personal-cross-border
+    countries: [SA]
+    data_classes: [personal, sensitive]
+    verdict: conditional
+    obligations: [transfer_risk_assessment, safeguards_or_adequacy, sector_check]
+    citation: SA
+    note: >-
+      SDAIA's transfer regulation permits transfers where conditions and
+      safeguards are met. An adequacy list was signalled; confirm whether it
+      exists before relying on adequacy rather than safeguards.
+
+  - id: ae-personal-cross-border
+    countries: [AE]
+    data_classes: [personal, sensitive]
+    verdict: conditional
+    obligations: [consent_or_legal_basis, sector_check]
+    citation: AE
+    note: >-
+      Check which regime applies first: federal, DIFC or ADGM. That depends on
+      where the entity is established, not where the data sits.
+
+  - id: ae-health-localisation
+    countries: [AE]
+    data_classes: [health]
+    verdict: localised
+    requires_region_in: [AE]
+    obligations: [sector_check]
+    citation: AE
+    note: >-
+      Health data is reported to carry in-country requirements separate from
+      the PDPL. This is a draft claim and must be verified against the health
+      ICT law before it is published.
+
+  - id: bh-personal-cross-border
+    countries: [BH]
+    data_classes: [personal, sensitive]
+    verdict: conditional
+    obligations: [authority_approval, sector_check]
+    citation: BH
+    note: >-
+      Bahrain is reported to restrict transfers to countries outside an
+      approved list. If correct this is the strictest GCC position; verify
+      before publishing.
+
+  - id: qa-personal-cross-border
+    countries: [QA]
+    data_classes: [personal, sensitive]
+    verdict: conditional
+    obligations: [consent_or_legal_basis, sector_check]
+    citation: QA
+    note: Thin entry. Treat the obligation list as incomplete.
+
+  - id: kw-everything
+    countries: [KW]
+    data_classes: ["*"]
+    verdict: unknown
+    obligations: [sector_check]
+    citation: KW
+    note: >-
+      Kuwait's framework could not be established from secondary sources. The
+      advisor returns unknown rather than guessing.
+
+  - id: government-data-anywhere
+    countries: ["*"]
+    data_classes: [government]
+    verdict: unknown
+    obligations: [sector_check]
+    citation: null
+    note: >-
+      Government data classification schemes are separate regimes with their
+      own rules, usually stricter and often not public. Out of scope until
+      someone can source them properly.

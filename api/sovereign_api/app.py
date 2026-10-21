@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from .db import make_pool
-from .routes import agent, enrollment, public
+from .routes import agent, enrollment, public, residency
 from .settings import Settings
 
 
@@ -38,4 +38,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(public.router)
     app.include_router(enrollment.router)
     app.include_router(agent.router)
+    app.include_router(residency.router)
     return app

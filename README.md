@@ -9,6 +9,14 @@ Independent latency and data-residency intelligence for Gulf cloud regions.
 a cost alarm, and a probe that measures real latency from a Gulf connection to
 every Middle East cloud region.
 
+**Phase 2 (in progress)** adds the other half of the product: a residency
+knowledge base in git and an advisor that answers *where may this workload
+live, and what does that choice cost in latency* with a citable decision
+record. No paid infrastructure is involved — see
+[`docs/costs.md`](docs/costs.md) for what is deferred until there is budget,
+and [`docs/running-free.md`](docs/running-free.md) for running the whole thing
+on one machine at zero cost.
+
 **Phase 1** turns that probe into a fleet: a control plane that decides what to
 measure, Ed25519 probe enrolment, an ingest API with idempotent writes, disk
 buffering that survives an outage, and Postgres with partitioned samples and
@@ -113,7 +121,30 @@ and spool live under `agent/state/` (mode 0600).
 | `GET` | `/v1/config` | probe signature |
 | `POST` | `/v1/samples` | probe signature |
 | `GET` | `/v1/matrix?window=24h` | public |
+| `GET` | `/v1/residency`, `/v1/residency/{cc}` | public |
+| `POST` | `/v1/advise` | public |
+| `GET` | `/v1/advise/{id}`, `/v1/advise/{id}/markdown` | public |
 | `GET` | `/v1/targets`, `/v1/probes`, `/healthz` | public |
+
+### The advisor
+
+```bash
+curl -s -X POST localhost:8000/v1/advise \
+  -H 'content-type: application/json' \
+  -d '{"user_countries":["OM"],"data_classes":["personal"]}'
+```
+
+Returns candidate regions ranked by *your* measured latency, each with the
+obligations attached and a citation into `knowledge/residency/`. The record is
+stored and permalinked, because the artifact someone pastes into a design
+review has to keep saying what it said when they pasted it, even after the
+latency data moves on.
+
+**Every residency entry is currently `draft`** — written from secondary
+sources, not checked against the instruments. The advisor says so in its
+warnings, the markdown export carries it in the header, and `sovereign
+knowledge check` fails any entry claiming a status its metadata cannot support.
+The machinery is real; the legal content is a starting point for verification.
 
 ### Operator commands
 
@@ -122,7 +153,11 @@ uv run sovereign migrate                      # apply pending migrations
 uv run sovereign issue-token --uses 5         # mint an enrolment token
 uv run sovereign rollup --lookback 30         # recompute 5m and 1h buckets
 uv run sovereign partitions --drop-older-than 30
+uv run sovereign knowledge check              # validate the knowledge base
 ```
+
+Or use the Makefile: `make up`, `make serve`, `make probe`, `make stats`,
+`make backup`, `make test`.
 
 ### What survives an outage
 

@@ -89,6 +89,30 @@ async def cmd_partitions(settings: Settings, args) -> int:
     return 0
 
 
+async def cmd_knowledge(settings: Settings, args) -> int:
+    """Validate the knowledge base. Runs in CI, so a malformed entry fails the
+    build rather than surfacing as a 500 on the advisor."""
+    from . import knowledge
+    entries = knowledge.load_entries()
+    problems = knowledge.check(entries)
+
+    drafts = [e.country for e in entries.values() if e.status == "draft"]
+    print(f"{len(entries)} entries, overall status: {knowledge.overall_status(entries)}")
+    if drafts:
+        print(f"draft (unverified): {', '.join(sorted(drafts))}")
+    for e in sorted(entries.values(), key=lambda x: x.country):
+        if e.open_questions:
+            print(f"  {e.country}: {len(e.open_questions)} open question(s)")
+
+    if problems:
+        print("\nPROBLEMS:")
+        for p in problems:
+            print(f"  - {p}")
+        return 1
+    print("\nno structural problems")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="sovereign")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -103,17 +127,23 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("rollup", help="recompute rollups")
     p.add_argument("--lookback", type=int, default=30, help="minutes")
 
+    kp = sub.add_parser("knowledge", help="validate the residency knowledge base")
+    kp.add_argument("action", nargs="?", default="check", choices=["check"])
+
     p = sub.add_parser("partitions", help="create and retire sample partitions")
     p.add_argument("--ahead", type=int, default=7)
     p.add_argument("--drop-older-than", type=int, default=None, help="days")
 
     args = parser.parse_args(argv)
-    settings = Settings.from_env()
+    # Only commands that touch the database need settings; validating the
+    # knowledge base is a pure file operation and must not require one.
+    settings = None if args.command == "knowledge" else Settings.from_env()
     handler = {
         "migrate": cmd_migrate,
         "issue-token": cmd_issue_token,
         "rollup": cmd_rollup,
         "partitions": cmd_partitions,
+        "knowledge": cmd_knowledge,
     }[args.command]
     return asyncio.run(handler(settings, args))
 

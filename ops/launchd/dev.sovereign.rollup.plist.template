@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.sovereign.rollup</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__ROOT__/ops/rollup.sh</string>
+  </array>
+
+  <!-- Every five minutes. Rollups are recomputed over a window, so a missed
+       run costs nothing: the next one covers the gap. -->
+  <key>StartInterval</key>
+  <integer>300</integer>
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>WorkingDirectory</key>
+  <string>__ROOT__</string>
+  <key>StandardOutPath</key>
+  <string>__ROOT__/data/logs/rollup.log</string>
+  <key>StandardErrorPath</key>
+  <string>__ROOT__/data/logs/rollup.log</string>
+</dict>
+</plist>
