@@ -118,8 +118,11 @@ jobs:
       - name: build unlisted (default)
         run: npm run build
 
+      # An indexable build refuses to complete without a published contact
+      # address. CI is checking the mechanics, not publishing, so it supplies
+      # a throwaway one; the real address is set at deploy time.
       - name: build indexable
-        run: PUBLIC_INDEXABLE=true npm run build
+        run: PUBLIC_INDEXABLE=true PUBLIC_CONTACT_EMAIL=ci@example.invalid npm run build
 
   terraform:
     name: terraform
