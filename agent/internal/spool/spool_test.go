@@ -22,10 +22,10 @@ func results(n int, prefix string) []probe.Result {
 	return out
 }
 
-func newSpool(t *testing.T) (*Spool, string) {
+func newSpool(t *testing.T) (*Spool[probe.Result], string) {
 	t.Helper()
 	dir := t.TempDir()
-	s, err := New(dir, 0)
+	s, err := New[probe.Result](dir, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestSurvivesRestart(t *testing.T) {
 	}
 
 	// A new process, same directory.
-	reopened, err := New(dir, 0)
+	reopened, err := New[probe.Result](dir, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestUnclaimedSendFileIsRecoveredAfterRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened, err := New(dir, 0)
+	reopened, err := New[probe.Result](dir, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +164,7 @@ func TestUnclaimedSendFileIsRecoveredAfterRestart(t *testing.T) {
 
 func TestSizeCapDropsOldestNotNewest(t *testing.T) {
 	dir := t.TempDir()
-	s, err := New(dir, 2048) // deliberately tiny
+	s, err := New[probe.Result](dir, 2048) // deliberately tiny
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,5 +223,38 @@ func TestPendingReportsBytes(t *testing.T) {
 	}
 	if s.Pending() == 0 {
 		t.Error("spool with data reports 0 bytes pending")
+	}
+}
+
+// A second payload type shares the implementation: the agent spools latency
+// samples every minute and traceroutes every hour, with identical semantics
+// and separate files.
+type tracePayload struct {
+	TargetID string `json:"target_id"`
+	Hops     int    `json:"hops"`
+}
+
+func TestSpoolIsGenericOverPayload(t *testing.T) {
+	s, _ := func() (*Spool[tracePayload], string) {
+		dir := t.TempDir()
+		sp, err := New[tracePayload](dir, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return sp, dir
+	}()
+
+	if err := s.Append([]tracePayload{{TargetID: "aws-me-central-1", Hops: 10}}); err != nil {
+		t.Fatal(err)
+	}
+	got, commit, err := s.Claim()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Hops != 10 || got[0].TargetID != "aws-me-central-1" {
+		t.Fatalf("payload did not round-trip: %+v", got)
+	}
+	if err := commit(); err != nil {
+		t.Fatal(err)
 	}
 }

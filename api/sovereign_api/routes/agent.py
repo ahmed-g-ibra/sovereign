@@ -6,8 +6,10 @@ import datetime as dt
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from .. import paths
 from ..auth import AuthedProbe, authenticate_probe
-from ..schemas import BatchIn, BatchResponse, ConfigOut, TargetOut
+from ..schemas import (BatchIn, BatchResponse, ConfigOut, TargetOut,
+                       TraceBatchIn)
 
 router = APIRouter(tags=["agent"])
 
@@ -36,6 +38,7 @@ async def get_config(request: Request,
         interval_s=60,
         timeout_s=5,
         config_ttl_s=settings.config_ttl_s,
+        traceroute_interval_s=settings.traceroute_interval_s,
         targets=[TargetOut(**r) for r in rows],
     )
 
@@ -127,6 +130,91 @@ async def ingest(body: BatchIn, request: Request,
     return BatchResponse(
         accepted=accepted,
         duplicates=len(body.samples) - accepted,
+        quarantined=probe.quarantined or quarantine,
+        clock_skew_ms=skew_ms,
+    )
+
+
+@router.post("/v1/traceroutes", response_model=BatchResponse)
+async def ingest_traces(body: TraceBatchIn, request: Request,
+                        probe: AuthedProbe = Depends(authenticate_probe)) -> BatchResponse:
+    """Store path measurements.
+
+    Same contract as sample ingest: at-least-once delivery made safe by
+    deduplicating on (probe, target, timestamp), so a buffered agent can
+    replay freely.
+    """
+    settings = request.app.state.settings
+    pool = request.app.state.pool
+
+    if not body.traces:
+        return BatchResponse(accepted=0, duplicates=0,
+                             quarantined=probe.quarantined,
+                             clock_skew_ms=probe.clock_skew_ms)
+
+    now = dt.datetime.now(dt.timezone.utc)
+    skew_ms = int((now - body.sent_at).total_seconds() * 1000)
+    quarantine = abs(skew_ms) > settings.clock_skew_quarantine_ms
+
+    accepted = 0
+    async with pool.connection() as conn:
+        async with conn.transaction():
+            for trace in body.traces:
+                if trace.ts > now + dt.timedelta(minutes=5):
+                    raise HTTPException(422, "trace dated in the future")
+
+                path = paths.as_path(h.asn for h in trace.hops)
+                cur = await conn.execute(
+                    """
+                    INSERT INTO traceroutes (probe_id, target_id, ts, dest_ip,
+                                             complete, hop_count, answered,
+                                             as_path, as_path_hash)
+                    VALUES (%s, %s, %s, %s::inet, %s, %s, %s, %s, %s)
+                    ON CONFLICT (probe_id, target_id, ts) DO NOTHING
+                    RETURNING id
+                    """,
+                    (probe.id, trace.target_id, trace.ts, trace.dest_ip,
+                     trace.complete, len(trace.hops),
+                     sum(1 for h in trace.hops if h.ip),
+                     path, paths.path_hash(path)),
+                )
+                row = await cur.fetchone()
+                if row is None:
+                    continue  # already held; replay is free
+
+                accepted += 1
+                if trace.hops:
+                    await conn.execute(
+                        """
+                        INSERT INTO traceroute_hops (traceroute_id, ttl, hop_ip,
+                                                     rtt_ms, asn, as_name, final)
+                        SELECT %s, h.ttl, h.ip::inet, h.rtt, h.asn, h.as_name, h.final
+                        FROM unnest(%s::smallint[], %s::text[], %s::real[],
+                                    %s::integer[], %s::text[], %s::boolean[])
+                             AS h(ttl, ip, rtt, asn, as_name, final)
+                        """,
+                        (row["id"],
+                         [h.ttl for h in trace.hops],
+                         [h.ip for h in trace.hops],
+                         [h.rtt_ms for h in trace.hops],
+                         [h.asn or None for h in trace.hops],
+                         [h.as_name for h in trace.hops],
+                         [h.final for h in trace.hops]),
+                    )
+
+            await conn.execute(
+                """
+                UPDATE probes
+                   SET last_seen_at = now(),
+                       quarantined  = quarantined OR %s
+                 WHERE id = %s
+                """,
+                (quarantine, probe.id),
+            )
+
+    return BatchResponse(
+        accepted=accepted,
+        duplicates=len(body.traces) - accepted,
         quarantined=probe.quarantined or quarantine,
         clock_skew_ms=skew_ms,
     )

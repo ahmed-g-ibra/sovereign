@@ -33,6 +33,37 @@ class TargetOut(BaseModel):
     is_control: bool
 
 
+class HopIn(BaseModel):
+    ttl: int = Field(ge=1, le=255)
+    ip: str | None = None
+    rtt_ms: float | None = None
+    asn: int | None = None
+    as_name: str | None = None
+    final: bool = False
+    timeout: bool = False
+
+
+class TraceIn(BaseModel):
+    target_id: str
+    ts: dt.datetime
+    dest_ip: str | None = None
+    host: str | None = None
+    complete: bool = False
+    hops: list[HopIn] = Field(default_factory=list, max_length=255)
+
+    @model_validator(mode="after")
+    def hops_have_distinct_ttls(self) -> "TraceIn":
+        ttls = [h.ttl for h in self.hops]
+        if len(set(ttls)) != len(ttls):
+            raise ValueError("a trace cannot have two hops at the same TTL")
+        return self
+
+
+class TraceBatchIn(BaseModel):
+    sent_at: dt.datetime
+    traces: list[TraceIn] = Field(default_factory=list, max_length=500)
+
+
 class ConfigOut(BaseModel):
     """What the control plane tells an agent to do.
 
@@ -43,6 +74,9 @@ class ConfigOut(BaseModel):
     interval_s: int
     timeout_s: int
     config_ttl_s: int
+    # Much longer than interval_s: a path changes on the order of weeks, and
+    # every trace puts ICMP at every router along the way.
+    traceroute_interval_s: int
     targets: list[TargetOut]
 
 

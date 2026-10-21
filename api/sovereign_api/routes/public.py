@@ -128,3 +128,75 @@ async def matrix(request: Request,
         "note": "Percentiles over successful probes only. Quarantined probes excluded.",
         "rows": rows,
     }
+
+
+@router.get("/v1/paths")
+async def list_paths(request: Request,
+                     target_id: str | None = None,
+                     window: str = Query("24h"),
+                     limit: int = Query(50, ge=1, le=500)) -> dict:
+    """Recent traces with their hops.
+
+    The AS path is the headline; the hops are there so anyone can check it.
+    """
+    interval = parse_window(window)
+    pool = request.app.state.pool
+
+    async with pool.connection() as conn:
+        cur = await conn.execute(
+            """
+            SELECT t.id, t.target_id, t.ts, host(t.dest_ip) AS dest_ip, t.complete,
+                   t.hop_count, t.answered, t.as_path, t.as_path_hash,
+                   p.country AS probe_country, p.name AS probe_name,
+                   coalesce(
+                     (SELECT json_agg(json_build_object(
+                          'ttl', h.ttl, 'ip', host(h.hop_ip), 'rtt_ms', h.rtt_ms,
+                          'asn', h.asn, 'as_name', h.as_name, 'final', h.final)
+                          ORDER BY h.ttl)
+                      FROM traceroute_hops h WHERE h.traceroute_id = t.id),
+                     '[]'::json) AS hops
+            FROM traceroutes t
+            JOIN probes p ON p.id = t.probe_id
+            WHERE t.ts > now() - %s::interval
+              AND p.quarantined IS FALSE
+              AND p.revoked_at IS NULL
+              AND (%s::text IS NULL OR t.target_id = %s)
+            ORDER BY t.ts DESC
+            LIMIT %s
+            """,
+            (interval, target_id, target_id, limit),
+        )
+        return {"window": window, "traces": await cur.fetchall()}
+
+
+@router.get("/v1/paths/changes")
+async def path_changes(request: Request,
+                       window: str = Query("30d"),
+                       limit: int = Query(100, ge=1, le=500)) -> dict:
+    """Every point at which the route to a target changed networks.
+
+    This is the output worth watching. A region launch, a new peering
+    arrangement or a cable fault all show up here first, as a path that stops
+    crossing one network and starts crossing another.
+    """
+    interval = parse_window(window)
+    pool = request.app.state.pool
+
+    async with pool.connection() as conn:
+        cur = await conn.execute(
+            """
+            SELECT c.target_id, c.ts, c.previous_ts, c.as_path, c.previous_path,
+                   p.country AS probe_country, p.name AS probe_name,
+                   t.provider, t.region
+            FROM path_changes c
+            JOIN probes  p ON p.id = c.probe_id
+            JOIN targets t ON t.id = c.target_id
+            WHERE c.ts > now() - %s::interval
+              AND p.quarantined IS FALSE
+              AND p.revoked_at IS NULL
+            ORDER BY c.ts DESC
+            LIMIT %s
+            """,
+            (interval, limit),
+        )
+        return {"window": window, "changes": await cur.fetchall()}

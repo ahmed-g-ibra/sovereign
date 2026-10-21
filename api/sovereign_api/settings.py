@@ -27,6 +27,10 @@ class Settings:
     # How long an agent may cache its config before asking again.
     config_ttl_s: int = 900
 
+    # How often a probe should trace its paths. Hourly by default: paths change
+    # on the order of weeks, and tracing is noisier than a latency probe.
+    traceroute_interval_s: int = 3600
+
     @classmethod
     def from_env(cls) -> "Settings":
         url = os.environ.get("DATABASE_URL")
@@ -38,4 +42,5 @@ class Settings:
             clock_skew_quarantine_ms=int(os.environ.get("CLOCK_SKEW_QUARANTINE_MS", 2000)),
             max_batch_samples=int(os.environ.get("MAX_BATCH_SAMPLES", 5000)),
             config_ttl_s=int(os.environ.get("CONFIG_TTL_S", 900)),
+            traceroute_interval_s=int(os.environ.get("TRACEROUTE_INTERVAL_S", 3600)),
         )

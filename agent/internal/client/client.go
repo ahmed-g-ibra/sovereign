@@ -15,6 +15,7 @@ import (
 
 	"sovereign/agent/internal/probe"
 	"sovereign/agent/internal/targets"
+	"sovereign/agent/internal/traceroute"
 )
 
 // Client is an enrolled probe's connection to the control plane.
@@ -37,10 +38,13 @@ func New(baseURL, probeID string, key ed25519.PrivateKey) *Client {
 
 // Config is the control plane's instructions.
 type Config struct {
-	IntervalS  int              `json:"interval_s"`
-	TimeoutS   int              `json:"timeout_s"`
-	ConfigTTLS int              `json:"config_ttl_s"`
-	Targets    []targets.Target `json:"targets"`
+	IntervalS  int `json:"interval_s"`
+	TimeoutS   int `json:"timeout_s"`
+	ConfigTTLS int `json:"config_ttl_s"`
+	// TracerouteIntervalS is much longer than IntervalS: a path changes on the
+	// order of weeks, and every trace puts ICMP at every router along the way.
+	TracerouteIntervalS int              `json:"traceroute_interval_s"`
+	Targets             []targets.Target `json:"targets"`
 }
 
 type BatchResponse struct {
@@ -116,6 +120,23 @@ func (c *Client) Upload(ctx context.Context, results []probe.Result) (*BatchResp
 	}
 	var out BatchResponse
 	if err := c.do(ctx, http.MethodPost, "/v1/samples", payload, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// UploadTraces sends path measurements. Same at-least-once contract as
+// Upload: the server deduplicates on (probe, target, timestamp).
+func (c *Client) UploadTraces(ctx context.Context, traces []traceroute.Trace) (*BatchResponse, error) {
+	payload := struct {
+		SentAt time.Time          `json:"sent_at"`
+		Traces []traceroute.Trace `json:"traces"`
+	}{
+		SentAt: time.Now().UTC(),
+		Traces: traces,
+	}
+	var out BatchResponse
+	if err := c.do(ctx, http.MethodPost, "/v1/traceroutes", payload, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

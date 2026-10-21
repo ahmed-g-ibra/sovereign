@@ -29,12 +29,14 @@ import (
 
 	"crypto/ed25519"
 
+	"sovereign/agent/internal/asn"
 	"sovereign/agent/internal/client"
 	"sovereign/agent/internal/hostinfo"
 	"sovereign/agent/internal/identity"
 	"sovereign/agent/internal/probe"
 	"sovereign/agent/internal/spool"
 	"sovereign/agent/internal/targets"
+	"sovereign/agent/internal/traceroute"
 )
 
 type options struct {
@@ -57,6 +59,7 @@ type options struct {
 	isp      string
 	tier     string
 	spoolMB  int64
+	noTrace  bool
 }
 
 func main() {
@@ -80,6 +83,7 @@ func main() {
 	flag.StringVar(&o.isp, "isp", "", "ISP you believe you are on (with -register)")
 	flag.StringVar(&o.tier, "tier", "community", "core, vps, cloud or community (with -register)")
 	flag.Int64Var(&o.spoolMB, "spool-mb", 64, "maximum megabytes of unsent samples to keep")
+	flag.BoolVar(&o.noTrace, "no-traceroute", false, "measure latency only, never trace paths")
 	flag.Parse()
 
 	log.SetFlags(log.LstdFlags | log.LUTC)
@@ -168,10 +172,30 @@ func runDaemon(ctx context.Context, o options) error {
 	}
 
 	c := client.New(o.server, id.ProbeID, key)
-	sp, err := spool.New(filepath.Join(o.stateDir, "spool"), o.spoolMB<<20)
+	sp, err := spool.New[probe.Result](filepath.Join(o.stateDir, "spool"), o.spoolMB<<20)
 	if err != nil {
 		return err
 	}
+	traceSpool, err := spool.New[traceroute.Trace](
+		filepath.Join(o.stateDir, "spool-traces"), o.spoolMB<<20)
+	if err != nil {
+		return err
+	}
+
+	// Path measurement is best-effort. An ICMP socket needs permissions some
+	// hosts will not grant, and a probe that cannot trace is still a perfectly
+	// good latency probe.
+	var tracer *traceroute.Tracer
+	if !o.noTrace {
+		if tracer, err = traceroute.New(); err != nil {
+			log.Printf("traceroute disabled: %v", err)
+			tracer = nil
+		} else {
+			defer tracer.Close()
+		}
+	}
+	asnLookup := asn.New(filepath.Join(o.stateDir, "asn-cache.json"))
+	var lastTrace time.Time
 
 	log.Printf("probe %s reporting to %s", id.ProbeID, o.server)
 	if pending := sp.Pending(); pending > 0 {
@@ -220,10 +244,22 @@ func runDaemon(ctx context.Context, o options) error {
 		if err := sp.Append(results); err != nil {
 			log.Printf("spool append failed: %v", err)
 		}
-		flush(ctx, c, sp)
+		flush(ctx, sp, c.Upload, "samples")
+
+		if tracer != nil && dueForTrace(lastTrace, cfg.TracerouteIntervalS) {
+			traces := traceAll(ctx, tracer, asnLookup, cfg.Targets)
+			lastTrace = time.Now()
+			if err := traceSpool.Append(traces); err != nil {
+				log.Printf("trace spool append failed: %v", err)
+			}
+			if err := asnLookup.Save(); err != nil {
+				log.Printf("could not save the AS cache: %v", err)
+			}
+		}
+		flush(ctx, traceSpool, c.UploadTraces, "traces")
 
 		if ctx.Err() != nil {
-			log.Printf("shutting down; %d bytes left in spool", sp.Pending())
+			log.Printf("shutting down; %d bytes left in spool", sp.Pending()+traceSpool.Pending())
 			return nil
 		}
 		if o.count > 0 && round >= o.count {
@@ -232,7 +268,7 @@ func runDaemon(ctx context.Context, o options) error {
 
 		select {
 		case <-ctx.Done():
-			log.Printf("shutting down; %d bytes left in spool", sp.Pending())
+			log.Printf("shutting down; %d bytes left in spool", sp.Pending()+traceSpool.Pending())
 			return nil
 		case <-time.After(interval):
 		}
@@ -300,9 +336,47 @@ func measureAll(ctx context.Context, ts []targets.Target, timeout time.Duration)
 	return out
 }
 
+func dueForTrace(last time.Time, intervalS int) bool {
+	if intervalS <= 0 {
+		intervalS = 3600
+	}
+	return time.Since(last) >= time.Duration(intervalS)*time.Second
+}
+
+// traceAll walks the path to every target and annotates each hop with the
+// network announcing it.
+func traceAll(ctx context.Context, tracer *traceroute.Tracer, lookup *asn.Lookup,
+	ts []targets.Target) []traceroute.Trace {
+	out := make([]traceroute.Trace, 0, len(ts))
+	for _, t := range ts {
+		if ctx.Err() != nil {
+			break
+		}
+		tr, err := tracer.Trace(ctx, t.ID, t.Host, traceroute.Options{})
+		if err != nil {
+			log.Printf("trace to %s failed: %v", t.ID, err)
+			continue
+		}
+		for i := range tr.Hops {
+			if tr.Hops[i].IP == "" {
+				continue
+			}
+			if rec, ok := lookup.Of(ctx, tr.Hops[i].IP); ok {
+				tr.Hops[i].ASN = rec.ASN
+				tr.Hops[i].ASName = rec.Name
+			}
+		}
+		out = append(out, *tr)
+		log.Printf("traced %s: %d hops, complete=%v", t.ID, len(tr.Hops), tr.Complete)
+	}
+	return out
+}
+
 // flush uploads everything pending. Failure is normal and cheap: the data
 // stays on disk and goes out with the next round.
-func flush(ctx context.Context, c *client.Client, sp *spool.Spool) {
+func flush[T any](ctx context.Context, sp *spool.Spool[T],
+	upload func(context.Context, []T) (*client.BatchResponse, error),
+	label string) {
 	pending, commit, err := sp.Claim()
 	if err != nil {
 		log.Printf("spool read failed: %v", err)
@@ -312,9 +386,9 @@ func flush(ctx context.Context, c *client.Client, sp *spool.Spool) {
 		return
 	}
 
-	resp, err := c.Upload(ctx, pending)
+	resp, err := upload(ctx, pending)
 	if err != nil {
-		log.Printf("upload of %d samples failed, keeping them: %v", len(pending), err)
+		log.Printf("upload of %d %s failed, keeping them: %v", len(pending), label, err)
 		return
 	}
 	if err := commit(); err != nil {
@@ -323,8 +397,8 @@ func flush(ctx context.Context, c *client.Client, sp *spool.Spool) {
 		log.Printf("uploaded but could not clear spool: %v", err)
 	}
 
-	log.Printf("uploaded %d samples (%d new, %d already held)",
-		len(pending), resp.Accepted, resp.Duplicates)
+	log.Printf("uploaded %d %s (%d new, %d already held)",
+		len(pending), label, resp.Accepted, resp.Duplicates)
 	if resp.Quarantined {
 		log.Printf("WARNING: this probe is quarantined and excluded from published "+
 			"figures (clock skew %d ms). Fix the clock, then ask an operator to clear it.",

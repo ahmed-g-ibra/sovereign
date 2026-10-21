@@ -35,7 +35,7 @@ one-line change to `agent/targets.json`.
 ## Layout
 
 ```
-agent/      Go probe: measures, buffers to disk, uploads signed batches
+agent/      Go probe: measures latency and paths, buffers to disk, uploads
 api/        FastAPI control plane + ingest, Postgres schema and migrations
 infra/
   bootstrap/  S3 state bucket (local state, run once)
@@ -120,11 +120,29 @@ and spool live under `agent/state/` (mode 0600).
 | `POST` | `/v1/probes/register` | enrolment token |
 | `GET` | `/v1/config` | probe signature |
 | `POST` | `/v1/samples` | probe signature |
+| `POST` | `/v1/traceroutes` | probe signature |
+| `GET` | `/v1/paths`, `/v1/paths/changes` | public |
 | `GET` | `/v1/matrix?window=24h` | public |
 | `GET` | `/v1/residency`, `/v1/residency/{cc}` | public |
 | `POST` | `/v1/advise` | public |
 | `GET` | `/v1/advise/{id}`, `/v1/advise/{id}/markdown` | public |
 | `GET` | `/v1/targets`, `/v1/probes`, `/healthz` | public |
+
+### Path measurement
+
+Every hour the agent traces the path to each target and annotates each hop with
+the network announcing it, resolved through Team Cymru's DNS service. Hops are
+stored for verification; change detection compares the ordered sequence of
+autonomous systems, because hop addresses churn while networks do not.
+
+```bash
+curl -s 'localhost:8000/v1/paths?target_id=aws-me-central-1' | jq '.traces[0].as_path'
+curl -s 'localhost:8000/v1/paths/changes?window=30d'
+```
+
+It needs no root: the agent uses a datagram ICMP socket, which is unprivileged
+on macOS and needs only a sysctl group on Linux ([ADR 0008](docs/adr/0008-unprivileged-icmp-and-as-paths.md)).
+A probe that cannot open one keeps measuring latency and says so once.
 
 ### The advisor
 

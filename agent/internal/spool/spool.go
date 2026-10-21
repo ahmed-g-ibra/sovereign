@@ -13,8 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-
-	"sovereign/agent/internal/probe"
 )
 
 const (
@@ -27,26 +25,31 @@ const (
 )
 
 // Spool is an on-disk queue of pending measurements.
-type Spool struct {
+//
+// Generic over the payload because the agent now produces two kinds of
+// measurement -- latency samples every minute, traceroutes every hour -- and
+// they need identical buffering semantics with separate files and separate
+// upload endpoints.
+type Spool[T any] struct {
 	dir      string
 	maxBytes int64
 	mu       sync.Mutex
 }
 
-func New(dir string, maxBytes int64) (*Spool, error) {
+func New[T any](dir string, maxBytes int64) (*Spool[T], error) {
 	if maxBytes <= 0 {
 		maxBytes = DefaultMaxBytes
 	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
-	return &Spool{dir: dir, maxBytes: maxBytes}, nil
+	return &Spool[T]{dir: dir, maxBytes: maxBytes}, nil
 }
 
-func (s *Spool) path(name string) string { return filepath.Join(s.dir, name) }
+func (s *Spool[T]) path(name string) string { return filepath.Join(s.dir, name) }
 
 // Append writes measurements to the spool, oldest first.
-func (s *Spool) Append(results []probe.Result) error {
+func (s *Spool[T]) Append(results []T) error {
 	if len(results) == 0 {
 		return nil
 	}
@@ -84,7 +87,7 @@ func (s *Spool) Append(results []probe.Result) error {
 //
 // A previous claim that was never committed is returned again before any newer
 // data, which keeps the spool in order across restarts.
-func (s *Spool) Claim() ([]probe.Result, func() error, error) {
+func (s *Spool[T]) Claim() ([]T, func() error, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -98,7 +101,7 @@ func (s *Spool) Claim() ([]probe.Result, func() error, error) {
 		}
 	}
 
-	results, err := readAll(sending)
+	results, err := readAll[T](sending)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -111,7 +114,7 @@ func (s *Spool) Claim() ([]probe.Result, func() error, error) {
 }
 
 // Pending reports how many bytes are waiting to be uploaded.
-func (s *Spool) Pending() int64 {
+func (s *Spool[T]) Pending() int64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var total int64
@@ -129,13 +132,13 @@ func (s *Spool) Pending() int64 {
 // probe that stops measuring during a long outage produces a gap exactly where
 // the interesting event is, and an unbounded spool eventually fills a
 // volunteer's disk, which is how you lose a volunteer.
-func (s *Spool) trimLocked() error {
+func (s *Spool[T]) trimLocked() error {
 	fi, err := os.Stat(s.path(activeName))
 	if err != nil || fi.Size() <= s.maxBytes {
 		return err
 	}
 
-	results, err := readAll(s.path(activeName))
+	results, err := readAll[T](s.path(activeName))
 	if err != nil {
 		return err
 	}
@@ -164,21 +167,21 @@ func (s *Spool) trimLocked() error {
 	return os.Rename(tmp, s.path(activeName))
 }
 
-func readAll(path string) ([]probe.Result, error) {
+func readAll[T any](path string) ([]T, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	var out []probe.Result
+	var out []T
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
 	for line := 1; sc.Scan(); line++ {
 		if len(sc.Bytes()) == 0 {
 			continue
 		}
-		var r probe.Result
+		var r T
 		if err := json.Unmarshal(sc.Bytes(), &r); err != nil {
 			// One corrupt line, from a power cut mid-write, must not strand
 			// every other sample in the file.

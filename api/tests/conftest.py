@@ -138,3 +138,33 @@ def sample(target_id: str = "aws-me-central-1", *, ts: dt.datetime | None = None
         out.update({"dns_ms": 2.1, "connect_ms": 10.2, "tls_ms": 11.1,
                     "total_ms": total_ms, "remote_ip": "3.5.50.169"})
     return out
+
+
+def hop(ttl: int, ip: str | None = None, asn: int | None = None,
+        rtt_ms: float | None = 5.0, final: bool = False) -> dict:
+    if ip is None:
+        return {"ttl": ttl, "timeout": True}
+    return {"ttl": ttl, "ip": ip, "rtt_ms": rtt_ms, "asn": asn,
+            "as_name": f"AS{asn}" if asn else None, "final": final}
+
+
+def trace(target_id: str = "aws-me-central-1", *, ts: dt.datetime | None = None,
+          hops: list[dict] | None = None, complete: bool = True,
+          dest_ip: str = "3.5.50.14") -> dict:
+    when = ts or dt.datetime.now(dt.timezone.utc)
+    if hops is None:
+        hops = [
+            hop(1, "192.168.0.1"),
+            hop(2, "81.161.90.253", 204170),
+            hop(3, "5.102.177.197", 204170),
+            hop(4),
+            hop(5, "3.5.50.14", 16509, final=True),
+        ]
+    return {"target_id": target_id, "ts": when.isoformat(), "dest_ip": dest_ip,
+            "complete": complete, "hops": hops}
+
+
+def trace_batch(traces: list[dict], sent_at: dt.datetime | None = None) -> bytes:
+    import json
+    sent = sent_at or dt.datetime.now(dt.timezone.utc)
+    return json.dumps({"sent_at": sent.isoformat(), "traces": traces}).encode()
