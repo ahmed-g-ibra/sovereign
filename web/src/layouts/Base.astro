@@ -60,7 +60,8 @@ const nav = [
             : <>No snapshot built into this site yet.</>}
         </p>
         <p>
-          Measurements are licensed <a href={meta.license.url} rel="license">{meta.license.name}</a>
+          <a href={site.repo}>Source on GitHub</a> · measurements licensed
+          {' '}<a href={meta.license.url} rel="license">{meta.license.name}</a>
           {' '}— reuse them with credit. The software is MIT and licensed
           separately. <a href={`${site.repo}/blob/main/LICENSE-DATA.md`}>Details</a>
         </p>

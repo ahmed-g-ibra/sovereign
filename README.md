@@ -5,13 +5,22 @@ Independent latency and data-residency intelligence for Gulf cloud regions.
 > Where is this workload allowed to live, and what does that choice cost me in
 > latency?
 
+### → [ahmed-g-ibra.github.io/sovereign](https://ahmed-g-ibra.github.io/sovereign/)
+
+The site is live but **unlisted**: shareable by link, refused by search engines
+until the dataset has more than one vantage point behind it and the residency
+entries are no longer drafts. It shows how many probes are reporting and how
+much history exists, so you can judge for yourself how much weight the numbers
+carry today.
+
 **Phase 0** is a Terraform skeleton, CI/CD with no long-lived AWS credentials,
 a cost alarm, and a probe that measures real latency from a Gulf connection to
 every Middle East cloud region.
 
-**The site** ([`web/`](web/)) is a static Astro build: the latency matrix, AS
-paths, residency pages and a region advisor that runs entirely in the browser.
-No server, free to host, and it builds with or without data.
+**The site** ([live](https://ahmed-g-ibra.github.io/sovereign/), source in
+[`web/`](web/)) is a static Astro build: the latency matrix, AS paths,
+residency pages and a region advisor that runs entirely in the browser. No
+server, free to host, and it builds with or without data.
 
 **Phase 2 (in progress)** adds the other half of the product: a residency
 knowledge base in git and an advisor that answers *where may this workload
