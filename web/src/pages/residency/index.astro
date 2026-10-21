@@ -1,0 +1,77 @@
+---
+import Base from '../../layouts/Base.astro';
+import { residency, meta } from '../../lib/data.js';
+import { flag } from '../../lib/format.js';
+
+const entries = Object.values(residency);
+const drafts = entries.filter((e) => e.status === 'draft');
+---
+
+<Base
+  title="Data residency"
+  description="Where data may legally live, per GCC country, with citations."
+  current="/residency/"
+>
+  <h1>Data residency</h1>
+  <p class="lede">
+    What each Gulf state's data protection regime says about keeping personal
+    data in-country and moving it abroad — the constraint that usually decides
+    which cloud region a workload can use.
+  </p>
+
+  {drafts.length > 0 && (
+    <div class="banner">
+      <p style="margin:0">
+        <strong>Draft — not verified.</strong>
+        {' '}{drafts.length} of {entries.length} entries were written from
+        secondary sources and have <em>not</em> been checked against the
+        instruments themselves. They are published to be corrected, not relied
+        upon. Every claim links to its source; read it before acting.
+      </p>
+    </div>
+  )}
+
+  {entries.length === 0 ? (
+    <div class="empty"><p>No residency data in this build.</p></div>
+  ) : (
+    <table>
+      <thead>
+        <tr>
+          <th>Country</th><th>Instrument</th>
+          <th class="hide-sm">Transfer abroad</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {entries.map((e) => (
+          <tr>
+            <td>
+              <a href={`/residency/${e.country.toLowerCase()}/`}>
+                {flag(e.country)} {e.country_name}
+              </a>
+            </td>
+            <td class="small">{e.instrument}</td>
+            <td class="small muted hide-sm">
+              {(e.cross_border_transfer ?? 'unknown').replace(/_/g, ' ')}
+            </td>
+            <td><span class={`pill ${e.status}`}>{e.status}</span></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+
+  <div class="card">
+    <h3 style="margin-top:0">How this is maintained</h3>
+    <p class="small">
+      Each country is a markdown file with structured metadata, kept in git, so
+      every change to a legal claim is a reviewed diff with a date attached. An
+      entry that claims to be verified must name who verified it and when, and
+      goes stale after 90 days. What could not be established is recorded as an
+      open question rather than quietly dropped.
+    </p>
+    <p class="small muted">
+      Informational only. Not legal advice, and no substitute for a qualified
+      practitioner in the relevant jurisdiction.
+    </p>
+  </div>
+</Base>

@@ -1,0 +1,16 @@
+---
+import Base from './Base.astro';
+const { frontmatter } = Astro.props;
+---
+<Base title={frontmatter.title} description={frontmatter.description} current={frontmatter.current}>
+  <article class="doc">
+    <slot />
+  </article>
+</Base>
+
+<style is:global>
+  .doc table { font-size: 0.86rem; }
+  .doc li { margin: 0.25rem 0; }
+  .doc h2 { border-bottom: 1px solid var(--line); padding-bottom: 0.3rem; }
+  .doc blockquote { border-left: 3px solid var(--line); margin-left: 0; padding-left: 1rem; color: var(--muted); }
+</style>

@@ -1,0 +1,81 @@
+---
+import Base from '../../layouts/Base.astro';
+import { flag } from '../../lib/format.js';
+
+export function getStaticPaths() {
+  // Loaded through glob rather than a direct import so that a checkout with no
+  // snapshot yields no routes instead of a build error.
+  const data = Object.values(
+    import.meta.glob('../../data/residency.json', { eager: true, import: 'default' })
+  )[0] ?? {};
+  return Object.values(data).map((entry) => ({
+    params: { country: entry.country.toLowerCase() },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const fields = [
+  ['Regulator', entry.regulator],
+  ['Instrument', entry.instrument],
+  ['In force', entry.in_force],
+  ['Localisation required', (entry.localisation_required ?? 'unknown').replace(/_/g, ' ')],
+  ['Cross-border transfer', (entry.cross_border_transfer ?? 'unknown').replace(/_/g, ' ')],
+  ['Last verified', entry.last_verified ?? 'never'],
+];
+
+const paragraphs = entry.body
+  .split(/\n\n+/)
+  .map((para) => `<p>${para.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</p>`)
+  .join('');
+---
+
+<Base
+  title={`${entry.country_name} — data residency`}
+  description={`Data residency rules for ${entry.country_name}: ${entry.instrument}`}
+  current="/residency/"
+>
+  <p class="small"><a href="/residency/">← All countries</a></p>
+  <h1>{flag(entry.country)} {entry.country_name}</h1>
+
+  {entry.status === 'draft' && (
+    <div class="banner">
+      <p style="margin:0">
+        <strong>Draft — not verified.</strong> This entry was written from
+        secondary sources and has not been checked against the instrument. Read
+        the primary source before relying on anything here.
+      </p>
+    </div>
+  )}
+
+  <table>
+    <tbody>
+      {fields.map(([k, v]) => (
+        <tr><th style="width:11rem">{k}</th><td>{v ?? '—'}</td></tr>
+      ))}
+    </tbody>
+  </table>
+
+  <div set:html={paragraphs} />
+
+  {entry.open_questions?.length > 0 && (
+    <>
+      <h2>Open questions</h2>
+      <p class="muted small">
+        What could not be established from available sources. Recorded rather
+        than dropped, because the gaps matter as much as the answers.
+      </p>
+      <ul>{entry.open_questions.map((q) => <li>{q}</li>)}</ul>
+    </>
+  )}
+
+  <h2>Sources</h2>
+  <ul class="small">
+    {entry.primary_source && (
+      <li><a href={entry.primary_source}>Primary source</a> — the instrument itself</li>
+    )}
+    {(entry.secondary_sources ?? []).map((s) => <li><a href={s}>{new URL(s).hostname}</a></li>)}
+  </ul>
+
+  <p class="small muted">Informational only. Not legal advice.</p>
+</Base>

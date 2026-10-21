@@ -1,0 +1,55 @@
+---
+import '../styles/global.css';
+import { meta } from '../lib/data.js';
+import { ago } from '../lib/format.js';
+
+const { title, description, current } = Astro.props;
+const nav = [
+  ['/', 'Latency'],
+  ['/paths/', 'Paths'],
+  ['/residency/', 'Residency'],
+  ['/advisor/', 'Advisor'],
+  ['/methodology/', 'Methodology'],
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · Sovereign</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📡</text></svg>" />
+  </head>
+  <body>
+    <header class="site">
+      <div class="wrap">
+        <a class="brand" href="/">Sovereign</a>
+        <nav>
+          {nav.map(([href, label]) => (
+            <a href={href} aria-current={current === href ? 'page' : undefined}>{label}</a>
+          ))}
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <slot />
+    </main>
+
+    <footer class="site">
+      <div class="wrap">
+        <p>
+          Independent latency and data-residency measurement for Gulf cloud regions.
+          Measurements from volunteer probes; methodology published in full.
+        </p>
+        <p>
+          {meta.generated_at
+            ? <>Data generated {ago(meta.generated_at)} · window {meta.window} · <a href="/methodology/">how this is measured</a></>
+            : <>No snapshot built into this site yet.</>}
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

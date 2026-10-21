@@ -74,6 +74,7 @@ class Entry:
             "last_verified": _isoformat(self.last_verified),
             "verified_by": self.meta.get("verified_by"),
             "stale": self.is_stale,
+            "days_since_verified": self.days_since_verified,
             "open_questions": self.open_questions,
         }
         return out

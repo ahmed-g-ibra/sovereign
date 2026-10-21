@@ -89,6 +89,34 @@ async def cmd_partitions(settings: Settings, args) -> int:
     return 0
 
 
+async def cmd_snapshot(settings: Settings, args) -> int:
+    """Export the data the static site builds against."""
+    import pathlib
+
+    from . import snapshot
+
+    out = pathlib.Path(args.out)
+    pool = make_pool(settings.database_url)
+    await pool.open(wait=True, timeout=30)
+    try:
+        async with pool.connection() as conn:
+            data = await snapshot.build(conn, window=args.window,
+                                        min_samples=args.min_samples)
+    finally:
+        await pool.close()
+
+    written = snapshot.write(data, out)
+    stats = data["meta"]["stats"]
+    print(f"wrote {len(written)} files to {out}")
+    print(f"  {stats['samples']} samples, {stats['traces']} traces, "
+          f"{stats['probes']} probe(s)")
+    print(f"  matrix rows: {len(data['matrix'])}, paths: {len(data['paths'])}, "
+          f"path changes: {len(data['changes'])}")
+    if not data["matrix"]:
+        print("  NOTE: no matrix rows -- not enough samples in the window yet")
+    return 0
+
+
 async def cmd_knowledge(settings: Settings, args) -> int:
     """Validate the knowledge base. Runs in CI, so a malformed entry fails the
     build rather than surfacing as a 500 on the advisor."""
@@ -127,6 +155,11 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("rollup", help="recompute rollups")
     p.add_argument("--lookback", type=int, default=30, help="minutes")
 
+    sp = sub.add_parser("snapshot", help="export JSON for the static site")
+    sp.add_argument("--out", default="../web/src/data")
+    sp.add_argument("--window", default="7 days")
+    sp.add_argument("--min-samples", type=int, default=10)
+
     kp = sub.add_parser("knowledge", help="validate the residency knowledge base")
     kp.add_argument("action", nargs="?", default="check", choices=["check"])
 
@@ -144,6 +177,7 @@ def main(argv: list[str] | None = None) -> int:
         "rollup": cmd_rollup,
         "partitions": cmd_partitions,
         "knowledge": cmd_knowledge,
+        "snapshot": cmd_snapshot,
     }[args.command]
     return asyncio.run(handler(settings, args))
 

@@ -1,0 +1,184 @@
+---
+import Base from '../layouts/Base.astro';
+import { residency, rules, targets, matrix, meta } from '../lib/data.js';
+import { DATA_CLASSES } from '../lib/advisor.js';
+
+const candidates = targets.filter((t) => t.status === 'live' && !t.is_control);
+const countries = Object.values(residency).map((e) => ({
+  code: e.country, name: e.country_name,
+}));
+
+// Everything the advisor needs is embedded in the page: the logic runs in the
+// browser because there is no API to call. That also means it works offline
+// and leaves no record of what anyone asked.
+const payload = {
+  entries: residency,
+  rules,
+  candidates: candidates.map((t) => ({
+    id: t.id, provider: t.provider, region: t.region,
+    country: t.country, city: t.city,
+  })),
+  matrix: matrix.map((r) => ({
+    target_id: r.target_id, probe_country: r.probe_country, samples: r.samples,
+    loss_pct: r.loss_pct, p50_ms: r.p50_ms, p95_ms: r.p95_ms,
+  })),
+  window: meta.window,
+};
+---
+
+<Base
+  title="Region advisor"
+  description="Which cloud regions may hold this workload, ranked by measured latency."
+  current="/advisor/"
+>
+  <h1>Region advisor</h1>
+  <p class="lede">
+    Describe the workload and get the regions that could hold it, ranked by
+    measured latency, with the obligations attached to each and a citation for
+    every claim.
+  </p>
+
+  <div class="banner">
+    <p style="margin:0">
+      <strong>Draft knowledge base.</strong> The residency entries behind this
+      have not been verified against the instruments. Treat the output as a
+      starting point for a conversation with a lawyer, never as the answer.
+    </p>
+  </div>
+
+  <script type="application/json" id="advisor-data" set:html={JSON.stringify(payload)}></script>
+
+  <form class="advisor" id="advisor-form">
+    <fieldset>
+      <legend>Where are your users?</legend>
+      <div class="checks">
+        {countries.map((c, i) => (
+          <label class="check">
+            <input type="checkbox" name="country" value={c.code} checked={i === 0} />
+            {c.name}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>What kind of data?</legend>
+      <div class="checks">
+        {DATA_CLASSES.map((dc) => (
+          <label class="check">
+            <input type="checkbox" name="dataclass" value={dc} checked={dc === 'personal'} />
+            {dc}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+
+    <button type="submit">Show candidate regions</button>
+  </form>
+
+  <div id="advisor-result"></div>
+
+  <script>
+    import { advise } from '../lib/advisor.js';
+
+    const data = JSON.parse(document.getElementById('advisor-data').textContent);
+    const form = document.getElementById('advisor-form');
+    const out = document.getElementById('advisor-result');
+
+    const checked = (name) =>
+      [...form.querySelectorAll(`input[name="${name}"]:checked`)].map((i) => i.value);
+
+    const esc = (s) =>
+      String(s ?? '').replace(/[&<>"]/g, (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+    const num = (v) => (v === null || v === undefined ? '—' : v.toFixed(1));
+
+    function latencyFor(userCountries) {
+      // Prefer probes in the user's own countries; fall back to every probe
+      // and say so, which mirrors what the API does.
+      const own = data.matrix.filter((r) => userCountries.includes(r.probe_country));
+      const rows = own.length ? own : data.matrix;
+      const byTarget = {};
+      for (const r of rows) {
+        if (!byTarget[r.target_id]) {
+          byTarget[r.target_id] = {
+            samples: r.samples, loss_pct: r.loss_pct,
+            p50_ms: r.p50_ms, p95_ms: r.p95_ms,
+          };
+        }
+      }
+      return { latency: byTarget, probeCountries: own.length ? userCountries : [] };
+    }
+
+    function render(record) {
+      const rows = record.regions.map((r) => `
+        <tr>
+          <td>${esc(r.region)}<span class="muted small"> ${esc(r.city ?? '')}</span></td>
+          <td>${esc(r.provider)}</td>
+          <td>${esc(r.country)}</td>
+          <td><span class="pill ${r.verdict}">${r.verdict}</span></td>
+          <td class="num">${num(r.latency?.p50_ms)}</td>
+          <td class="num">${num(r.latency?.p95_ms)}</td>
+          <td class="small muted">${esc(r.reasons[0] ?? '')}</td>
+        </tr>`).join('');
+
+      const juris = record.jurisdictions.map((j) => `
+        <div class="card">
+          <h3 style="margin-top:0">${esc(j.country_name)}
+            <span class="pill ${j.verdict}">${j.verdict}</span>
+            <span class="pill ${j.kb_status}">${j.kb_status}</span>
+          </h3>
+          <p class="small"><strong>${esc(j.instrument)}</strong><br>
+             <span class="muted">${esc(j.regulator)}</span></p>
+          ${j.obligations.length ? `<p class="small"><strong>Obligations</strong></p>
+            <ul class="small">${j.obligations.map((o) =>
+              `<li><strong>${esc(o.label)}</strong> — ${esc(o.detail)}</li>`).join('')}</ul>` : ''}
+          ${j.open_questions.length ? `<details><summary class="muted small">
+              ${j.open_questions.length} open question(s)</summary>
+              <ul class="small">${j.open_questions.map((q) =>
+                `<li>${esc(q)}</li>`).join('')}</ul></details>` : ''}
+          <p class="small muted">Source: <code>${esc(j.citation)}</code></p>
+        </div>`).join('');
+
+      out.innerHTML = `
+        <h2>Candidate regions</h2>
+        ${record.warnings.length ? `<div class="banner"><ul class="small" style="margin:0">
+          ${record.warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul></div>` : ''}
+        <table>
+          <thead><tr><th>Region</th><th>Provider</th><th>Country</th><th>Verdict</th>
+            <th class="num">p50</th><th class="num">p95</th><th>Why</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <p class="muted small">
+          Latency measured over ${esc(record.evidence.window)} from
+          ${record.evidence.probe_countries.length
+            ? esc(record.evidence.probe_countries.join(', '))
+            : 'every available vantage point'}.
+          ${record.evidence.regions_with_measurements} of ${record.regions.length}
+          regions have measurements.
+        </p>
+        <h2>Jurisdictions</h2>
+        ${juris || '<p class="muted">No applicable jurisdiction entries.</p>'}
+        <p class="small muted">${esc(record.disclaimer)}</p>`;
+      out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const userCountries = checked('country');
+      const dataClasses = checked('dataclass');
+      if (!userCountries.length || !dataClasses.length) {
+        out.innerHTML = '<p class="muted">Pick at least one country and one data class.</p>';
+        return;
+      }
+      const { latency, probeCountries } = latencyFor(userCountries);
+      render(advise({
+        userCountries, dataClasses,
+        entries: data.entries, rules: data.rules,
+        candidateRegions: data.candidates,
+        latency, window: data.window, probeCountries,
+      }));
+    });
+  </script>
+</Base>

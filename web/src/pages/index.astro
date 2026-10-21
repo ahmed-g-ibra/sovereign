@@ -1,0 +1,159 @@
+---
+import Base from '../layouts/Base.astro';
+import { meta, deployable, controls, probes, hasData } from '../lib/data.js';
+import { ms, pct, band, flag, providerName, ago } from '../lib/format.js';
+
+const stats = meta.stats ?? {};
+const days =
+  stats.oldest && stats.newest
+    ? (new Date(stats.newest) - new Date(stats.oldest)) / 86400000
+    : 0;
+
+const fastest = deployable.find((r) => r.p50_ms !== null);
+const reporting = probes.filter((p) => p.reporting).length;
+---
+
+<Base
+  title="Gulf cloud latency"
+  description="Measured latency from Gulf connections to every Middle East cloud region."
+  current="/"
+>
+  <h1>Gulf cloud latency, measured</h1>
+  <p class="lede">
+    How long it actually takes to reach each Middle East cloud region from a
+    connection in the Gulf — measured continuously from real consumer and
+    business networks, not from inside a cloud provider's own backbone.
+  </p>
+
+  <div class="grid" style="margin-top:1.5rem">
+    <div class="stat"><div class="n">{(stats.samples ?? 0).toLocaleString()}</div><div class="k">Measurements</div></div>
+    <div class="stat"><div class="n">{(stats.traces ?? 0).toLocaleString()}</div><div class="k">Path traces</div></div>
+    <div class="stat"><div class="n">{days < 1 ? '<1' : days.toFixed(0)}</div><div class="k">Days of history</div></div>
+    <div class="stat"><div class="n">{reporting}/{probes.length}</div><div class="k">Probes reporting</div></div>
+  </div>
+
+  {!hasData && (
+    <div class="empty">
+      <p><strong>No snapshot in this build.</strong></p>
+      <p class="small">
+        Run <code>make snapshot</code> against a control plane with data, then rebuild.
+      </p>
+    </div>
+  )}
+
+  {deployable.length > 0 && (
+    <>
+      <h2>Regions you could deploy to</h2>
+      <p class="muted small">
+        Total time to establish a TLS connection: DNS, TCP handshake and TLS
+        handshake combined. Percentiles over successful probes only.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Region</th>
+            <th>Provider</th>
+            <th class="hide-sm">From</th>
+            <th class="num">p50</th>
+            <th class="num">p95</th>
+            <th class="num hide-sm">DNS</th>
+            <th class="num hide-sm">TCP</th>
+            <th class="num">Loss</th>
+            <th class="num hide-sm">n</th>
+          </tr>
+        </thead>
+        <tbody>
+          {deployable.map((r) => (
+            <tr>
+              <td>
+                {flag(r.target_country)} <strong>{r.region}</strong>
+                <span class="muted small"> {r.city}</span>
+              </td>
+              <td>{providerName(r.provider)}</td>
+              <td class="hide-sm muted">{flag(r.probe_country)} {r.probe_country}</td>
+              <td class={`num b-${band(r.p50_ms)}`}>{ms(r.p50_ms)}</td>
+              <td class="num">{ms(r.p95_ms)}</td>
+              <td class="num hide-sm muted">{ms(r.dns_ms)}</td>
+              <td class="num hide-sm muted">{ms(r.connect_ms)}</td>
+              <td class={`num ${r.loss_pct > 0 ? 'b-bad' : 'muted'}`}>{pct(r.loss_pct)}</td>
+              <td class="num muted hide-sm">{r.samples}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p class="muted small">All figures in milliseconds.</p>
+    </>
+  )}
+
+  {controls.length > 0 && (
+    <>
+      <h2>Controls</h2>
+      <p class="muted small">
+        Not deployment candidates. European regions are the number a local
+        region has to beat; the Azure row is a global anycast endpoint and must
+        never be read as a regional figure.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Region</th><th>Provider</th><th class="num">p50</th><th class="num">p95</th><th class="num">Loss</th></tr>
+        </thead>
+        <tbody>
+          {controls.map((r) => (
+            <tr>
+              <td>{flag(r.target_country)} {r.region} <span class="muted small">{r.city}</span></td>
+              <td>{providerName(r.provider)}</td>
+              <td class="num">{ms(r.p50_ms)}</td>
+              <td class="num">{ms(r.p95_ms)}</td>
+              <td class="num muted">{pct(r.loss_pct)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  )}
+
+  {fastest && (
+    <div class="card">
+      <h3 style="margin-top:0">What this currently shows</h3>
+      <p class="small">
+        The fastest region measured is <strong>{fastest.region}</strong>
+        ({providerName(fastest.provider)}) at {ms(fastest.p50_ms)} ms median.
+        Where a region is unusually fast it is normally because the probe's ISP
+        peers directly with that provider — the <a href="/paths/">path data</a>
+        shows which networks each route crosses.
+      </p>
+      <p class="small muted">
+        One probe is an anecdote. These figures become evidence as vantage
+        points and history accumulate.
+      </p>
+    </div>
+  )}
+
+  <h2>Probes</h2>
+  {probes.length === 0 ? (
+    <p class="muted">No probes enrolled.</p>
+  ) : (
+    <table>
+      <thead>
+        <tr><th>Probe</th><th>Location</th><th>Tier</th><th>Last seen</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {probes.map((p) => (
+          <tr>
+            <td class="mono">{p.name}</td>
+            <td>{flag(p.country)} {p.city ?? p.country}</td>
+            <td class="muted">{p.tier}</td>
+            <td class="muted small">{ago(p.last_seen_at)}</td>
+            <td>
+              {p.quarantined
+                ? <span class="pill bad">quarantined</span>
+                : p.reporting
+                  ? <span class="pill allowed">reporting</span>
+                  : <span class="pill unknown">silent</span>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+</Base>

@@ -1,0 +1,137 @@
+---
+import Base from '../layouts/Base.astro';
+import { paths, changes, networks } from '../lib/data.js';
+import { ms, flag, providerName, ago } from '../lib/format.js';
+
+const byName = Object.fromEntries(networks.map((n) => [n.asn, n.as_name]));
+const shortName = (asn) => {
+  const full = byName[asn];
+  if (!full) return `AS${asn}`;
+  // Cymru names look like "AMAZON-02 - Amazon.com, Inc., US".
+  return full.split(' - ')[0];
+};
+---
+
+<Base
+  title="Network paths"
+  description="Which networks Gulf traffic crosses to reach each cloud region."
+  current="/paths/"
+>
+  <h1>Network paths</h1>
+  <p class="lede">
+    Latency tells you a route is slow. The path tells you why. Every hour each
+    probe traces the route to every region and records which autonomous systems
+    the traffic crosses.
+  </p>
+
+  {paths.length === 0 ? (
+    <div class="empty">
+      <p><strong>No path data in this build.</strong></p>
+      <p class="small">Traces run hourly once a probe is enrolled.</p>
+    </div>
+  ) : (
+    <>
+      <h2>Current routes</h2>
+      <p class="muted small">
+        Consecutive hops inside one network are collapsed: what is shown is the
+        sequence of networks, which is the part that stays stable while hop
+        addresses churn.
+      </p>
+
+      {paths.map((p) => (
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap">
+            <h3 style="margin:0">
+              {flag(p.target_country)} {p.region}
+              <span class="muted small"> {providerName(p.provider)}</span>
+            </h3>
+            <span class="small muted">
+              {p.answered}/{p.hop_count} hops answered · {ago(p.ts)}
+              {!p.complete && <> · <span class="pill bad">incomplete</span></>}
+            </span>
+          </div>
+
+          <div class="aspath" style="margin:0.6rem 0">
+            {p.as_path.length === 0 ? (
+              <span class="muted small">no networks resolved</span>
+            ) : (
+              p.as_path.map((asn, i) => (
+                <>
+                  {i > 0 && <span class="arrow">→</span>}
+                  <span class="as" title={byName[asn] ?? ''}>{shortName(asn)}</span>
+                </>
+              ))
+            )}
+          </div>
+
+          <details>
+            <summary class="muted">Hops</summary>
+            <table>
+              <thead>
+                <tr><th class="num">TTL</th><th>Address</th><th class="num">RTT</th><th>Network</th></tr>
+              </thead>
+              <tbody>
+                {p.hops.map((h) => (
+                  <tr>
+                    <td class="num muted">{h.ttl}</td>
+                    <td class="mono">{h.ip ?? <span class="muted">no reply</span>}</td>
+                    <td class="num">{ms(h.rtt_ms)}</td>
+                    <td class="muted small">{h.as_name ?? ''}{h.final ? ' · destination' : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
+        </div>
+      ))}
+
+      <h2>Route changes</h2>
+      <p class="muted small">
+        A change means the traffic started crossing a different network — not
+        merely a different router. Hop addresses rotate constantly; networks do
+        not.
+      </p>
+      {changes.length === 0 ? (
+        <p class="muted">
+          No route changes recorded yet. Detection needs at least two traces of
+          the same route, so this stays empty for the first few hours.
+        </p>
+      ) : (
+        <table>
+          <thead>
+            <tr><th>Region</th><th>When</th><th>Before</th><th>After</th></tr>
+          </thead>
+          <tbody>
+            {changes.map((c) => (
+              <tr>
+                <td>{c.region} <span class="muted small">{providerName(c.provider)}</span></td>
+                <td class="small muted">{ago(c.ts)}</td>
+                <td class="mono small">{c.previous_path.map(shortName).join(' → ')}</td>
+                <td class="mono small">{c.as_path.map(shortName).join(' → ')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <h2>Networks observed</h2>
+      <table>
+        <thead>
+          <tr><th class="num">AS</th><th>Network</th><th class="num">Hops seen</th></tr>
+        </thead>
+        <tbody>
+          {networks.map((n) => (
+            <tr>
+              <td class="num mono">{n.asn}</td>
+              <td class="small">{n.as_name}</td>
+              <td class="num muted">{n.hops_seen}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p class="muted small">
+        Network names resolved through Team Cymru's public IP-to-ASN service.
+      </p>
+    </>
+  )}
+</Base>

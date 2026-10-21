@@ -45,10 +45,23 @@ rollup: ## Recompute 5m and 1h rollups
 backup: ## Dump the database to data/backups/
 	@ops/backup.sh
 
+.PHONY: snapshot
+snapshot: ## Export JSON from the database into the site
+	cd api && DATABASE_URL=$(DB_URL) uv run sovereign snapshot
+
+.PHONY: site
+site: snapshot ## Build the static site (dist/ is deployable as-is)
+	cd web && npm install --silent && npm run build
+
+.PHONY: site-dev
+site-dev: ## Run the site with live reload
+	cd web && npm run dev
+
 .PHONY: test
 test: ## Run every test suite
 	cd agent && gofmt -l . && go vet ./... && go test -race ./...
 	cd api && uv run pytest -q
+	cd web && npm test
 	terraform -chdir=infra/bootstrap fmt -check -recursive
 	terraform -chdir=infra/aws fmt -check -recursive
 

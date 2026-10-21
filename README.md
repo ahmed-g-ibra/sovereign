@@ -9,6 +9,10 @@ Independent latency and data-residency intelligence for Gulf cloud regions.
 a cost alarm, and a probe that measures real latency from a Gulf connection to
 every Middle East cloud region.
 
+**The site** ([`web/`](web/)) is a static Astro build: the latency matrix, AS
+paths, residency pages and a region advisor that runs entirely in the browser.
+No server, free to host, and it builds with or without data.
+
 **Phase 2 (in progress)** adds the other half of the product: a residency
 knowledge base in git and an advisor that answers *where may this workload
 live, and what does that choice cost in latency* with a citable decision
@@ -37,6 +41,8 @@ one-line change to `agent/targets.json`.
 ```
 agent/      Go probe: measures latency and paths, buffers to disk, uploads
 api/        FastAPI control plane + ingest, Postgres schema and migrations
+web/        Astro static site, built from a JSON snapshot
+knowledge/  residency entries, advisor rules, cross-language fixtures
 infra/
   bootstrap/  S3 state bucket (local state, run once)
   aws/        GitHub OIDC roles + budget alarm (remote state)
@@ -143,6 +149,28 @@ curl -s 'localhost:8000/v1/paths/changes?window=30d'
 It needs no root: the agent uses a datagram ICMP socket, which is unprivileged
 on macOS and needs only a sysctl group on Linux ([ADR 0008](docs/adr/0008-unprivileged-icmp-and-as-paths.md)).
 A probe that cannot open one keeps measuring latency and says so once.
+
+### The site
+
+```bash
+make site        # snapshot the database, then build to web/dist
+make site-dev    # live reload on :4321
+```
+
+`web/dist` is a plain directory of HTML — deployable free to Cloudflare Pages,
+GitHub Pages or anything else that serves files.
+
+Because the control plane is not public, the site builds against a **JSON
+snapshot** exported from the database (`make snapshot`). Every page shows when
+that snapshot was taken. The snapshot is gitignored: a fresh clone has no data
+and still builds, rendering empty states instead of failing.
+
+The advisor therefore runs **in the browser**, not against the API — which also
+means it works offline and leaves no record of what anyone asked. That is a
+second implementation of the rules, so it carries the same protection as the
+request signing: a golden fixture in `knowledge/fixtures/` is asserted by both
+`api/tests/test_advisor_golden.py` and `web/test/advisor.golden.test.js`, and
+drift fails one of them.
 
 ### The advisor
 

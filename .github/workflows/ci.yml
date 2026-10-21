@@ -88,6 +88,33 @@ jobs:
       - name: test
         run: uv run pytest -q
 
+  web:
+    name: web (astro)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: install
+        run: npm ci
+
+      # Asserts the browser advisor still agrees with the Python one.
+      - name: test
+        run: npm test
+
+      # Builds with no snapshot present, which is what a fresh clone looks
+      # like. Every page must render an empty state rather than fail.
+      - name: build without data
+        run: npm run build
+
   terraform:
     name: terraform
     runs-on: ubuntu-latest
