@@ -107,6 +107,20 @@ outage produces a gap in *upload* time, never in measurement time.
 Rollups are recomputed rather than accumulated, for the same reason: a late
 batch has to correct the bucket it belongs to, not append a second one.
 
+## Licence and reuse
+
+The measurements are published under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/): share and adapt
+them, including commercially, with credit. The code is MIT, which is a
+different licence for a different thing — see `LICENSE-DATA.md`.
+
+Every API response and every exported snapshot carries its licence and
+attribution string, so the terms travel with the data rather than living only
+on a page somebody has to find.
+
+When citing a figure, give the date it was taken. Latency measurements age,
+and every published figure carries a generation timestamp for that reason.
+
 ## Courtesy
 
 Conservative intervals, no retries-on-retries, a real contact address on the

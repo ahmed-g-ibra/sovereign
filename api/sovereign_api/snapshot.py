@@ -18,6 +18,7 @@ import pathlib
 from typing import Any
 
 from . import knowledge
+from .licensing import DATA_LICENSE
 
 # Short enough to be current, long enough that one laptop sleeping overnight
 # does not empty the site.
@@ -120,6 +121,7 @@ async def build(conn, *, window: str = DEFAULT_WINDOW,
             "window": window,
             "min_samples": min_samples,
             "kb_status": knowledge.overall_status(entries),
+            "license": DATA_LICENSE,
             "stats": stats,
         },
         "matrix": matrix,

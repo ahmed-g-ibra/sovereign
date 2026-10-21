@@ -85,3 +85,18 @@ async def test_rollup_produces_buckets(agent, app):
     assert rows, "expected at least one 5-minute bucket"
     assert sum(r["samples"] for r in rows) == 12
     assert all(r["p50_ms"] is not None for r in rows)
+
+
+async def test_published_data_carries_its_licence(agent, client):
+    """A licence on a web page gets separated from the data the moment someone
+    copies a JSON response into a notebook."""
+    await agent.post("/v1/samples", batch([sample()]))
+
+    for path in ("/v1/matrix?window=1h&min_samples=1", "/v1/paths",
+                 "/v1/paths/changes"):
+        body = (await client.get(path)).json()
+        licence = body.get("license")
+        assert licence, f"{path} publishes data with no licence"
+        assert licence["name"] == "CC BY 4.0"
+        assert "creativecommons.org" in licence["url"]
+        assert "github.com" in licence["attribution"]

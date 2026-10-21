@@ -270,13 +270,19 @@ it arrives. The budget alarm defaults to a $50 ceiling with alerts at 50%, 80%,
 
 ## Licence
 
-Code and content in this repository are MIT licensed — see [LICENSE](LICENSE).
-That covers the agent, the API, the site and the residency entries.
+Two licences, split along a clean line:
 
-**The measurement dataset is a separate question and is currently undecided.**
-If you want the latency and path data to be citable and reusable, it needs its
-own licence (CC BY 4.0 is the usual choice for this kind of dataset, and
-attribution is the point of publishing it). Decide before anyone builds on it.
+| | Licence | |
+|---|---|---|
+| **Code and prose in this repository** — agent, API, site, Terraform, residency entries | MIT | [LICENSE](LICENSE) |
+| **Measurement data** — samples, traceroutes, AS paths, rollups, snapshots, API responses | CC BY 4.0 | [LICENSE-DATA.md](LICENSE-DATA.md) |
+
+Reusing the software: MIT. Reusing the numbers: attribution required.
+
+Attribution is deliberate rather than public domain. The value of this dataset
+is that any figure can be traced back to a published methodology and a known
+set of vantage points; a number reproduced without that link is exactly the
+unsourced figure this project exists to replace.
 
 ## Conventions
 

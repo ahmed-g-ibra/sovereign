@@ -6,6 +6,8 @@ import re
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from ..licensing import DATA_LICENSE
+
 router = APIRouter(tags=["public"])
 
 _WINDOW = re.compile(r"^(\d{1,4})([hd])$")
@@ -126,6 +128,7 @@ async def matrix(request: Request,
         "window": window,
         "min_samples": min_samples,
         "note": "Percentiles over successful probes only. Quarantined probes excluded.",
+        "license": DATA_LICENSE,
         "rows": rows,
     }
 
@@ -166,7 +169,8 @@ async def list_paths(request: Request,
             """,
             (interval, target_id, target_id, limit),
         )
-        return {"window": window, "traces": await cur.fetchall()}
+        return {"window": window, "license": DATA_LICENSE,
+                "traces": await cur.fetchall()}
 
 
 @router.get("/v1/paths/changes")
@@ -199,4 +203,5 @@ async def path_changes(request: Request,
             """,
             (interval, limit),
         )
-        return {"window": window, "changes": await cur.fetchall()}
+        return {"window": window, "license": DATA_LICENSE,
+                "changes": await cur.fetchall()}

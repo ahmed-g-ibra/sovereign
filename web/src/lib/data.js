@@ -12,6 +12,13 @@ export const meta = pick('meta', {
   generated_at: null,
   window: '7 days',
   kb_status: 'draft',
+  // Mirrors api/sovereign_api/licensing.py. The snapshot carries its own
+  // licence; this is only the fallback for a build with no data.
+  license: {
+    name: 'CC BY 4.0',
+    url: 'https://creativecommons.org/licenses/by/4.0/',
+    attribution: 'Sovereign — https://github.com/ahmed-g-ibra/sovereign',
+  },
   stats: { samples: 0, traces: 0, probes: 0, oldest: null, newest: null },
 });
 
