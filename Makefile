@@ -57,6 +57,16 @@ site: snapshot ## Build the static site (dist/ is deployable as-is)
 site-dev: ## Run the site with live reload
 	cd web && npm run dev
 
+.PHONY: deploy
+deploy: snapshot ## Build with fresh data and upload to Cloudflare Pages
+	cd web && npm install --silent && npm run deploy
+
+.PHONY: deploy-indexed
+deploy-indexed: snapshot ## Deploy AND allow search engines (see docs/deploying.md)
+	@echo "This makes the site discoverable. Checklist: docs/deploying.md"
+	@read -p "Continue? [y/N] " ok && [ "$$ok" = "y" ]
+	cd web && PUBLIC_INDEXABLE=true npm run deploy
+
 .PHONY: test
 test: ## Run every test suite
 	cd agent && gofmt -l . && go vet ./... && go test -race ./...

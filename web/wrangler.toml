@@ -1,0 +1,13 @@
+# Cloudflare Pages project configuration.
+#
+# Deployment is a direct upload from a machine that has the data, not a
+# Cloudflare-side git build. The site renders a snapshot exported from the
+# control plane, and that snapshot is deliberately not in git -- so a build
+# running on Cloudflare's servers would produce a correct, empty site.
+#
+#   npm run deploy      # build and upload
+#
+# See docs/deploying.md.
+name = "sovereign"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-10-22"

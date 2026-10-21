@@ -160,6 +160,21 @@ make site-dev    # live reload on :4321
 `web/dist` is a plain directory of HTML — deployable free to Cloudflare Pages,
 GitHub Pages or anything else that serves files.
 
+```bash
+make deploy      # snapshot, build, upload to Cloudflare Pages
+```
+
+The site ships **unlisted**: a `noindex` meta tag, an `X-Robots-Tag` header and
+a deliberately permissive `robots.txt`, all generated from one flag and checked
+after every build. It is shareable by link and invisible to search engines
+until the dataset and the residency entries are ready to be read by strangers.
+[`docs/deploying.md`](docs/deploying.md) covers the deployment model and the
+checklist for turning indexing on.
+
+Deployment is a direct upload rather than a Cloudflare-side git build, because
+the snapshot is not in git: a build on their servers would succeed and produce
+an empty site.
+
 Because the control plane is not public, the site builds against a **JSON
 snapshot** exported from the database (`make snapshot`). Every page shows when
 that snapshot was taken. The snapshot is gitignored: a fresh clone has no data

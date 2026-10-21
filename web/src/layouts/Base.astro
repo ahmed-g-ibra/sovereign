@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import { meta } from '../lib/data.js';
 import { ago } from '../lib/format.js';
+import { indexable } from '../lib/site.js';
 
 const { title, description, current } = Astro.props;
 const nav = [
@@ -20,6 +21,7 @@ const nav = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title} · Sovereign</title>
     <meta name="description" content={description} />
+    {!indexable && <meta name="robots" content="noindex, nofollow" />}
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📡</text></svg>" />
   </head>
   <body>
@@ -44,6 +46,13 @@ const nav = [
           Independent latency and data-residency measurement for Gulf cloud regions.
           Measurements from volunteer probes; methodology published in full.
         </p>
+        {!indexable && (
+          <p>
+            <span class="pill draft">unlisted</span>
+            {' '}Not indexed by search engines while the dataset and the
+            residency entries are still early.
+          </p>
+        )}
         <p>
           {meta.generated_at
             ? <>Data generated {ago(meta.generated_at)} · window {meta.window} · <a href="/methodology/">how this is measured</a></>

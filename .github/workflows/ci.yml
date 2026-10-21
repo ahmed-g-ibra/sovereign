@@ -103,17 +103,23 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
+      # --omit=dev skips wrangler, which only a deploy needs.
       - name: install
-        run: npm ci
+        run: npm ci --omit=dev
 
       # Asserts the browser advisor still agrees with the Python one.
       - name: test
         run: npm test
 
       # Builds with no snapshot present, which is what a fresh clone looks
-      # like. Every page must render an empty state rather than fail.
-      - name: build without data
+      # like. Every page must render an empty state rather than fail. The
+      # post-build check also asserts the noindex meta tag, the X-Robots-Tag
+      # header and robots.txt all agree with the indexing flag.
+      - name: build unlisted (default)
         run: npm run build
+
+      - name: build indexable
+        run: PUBLIC_INDEXABLE=true npm run build
 
   terraform:
     name: terraform

@@ -9,3 +9,7 @@ src/data/*.json
 
 # Generated from docs/ at build time.
 src/pages/methodology.md
+
+# Generated from the indexing flag by scripts/gen-public.mjs.
+public/robots.txt
+public/_headers

@@ -4,13 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/sync-docs.mjs && astro dev",
-    "build": "node scripts/sync-docs.mjs && astro build",
+    "dev": "npm run sync && astro dev",
+    "build": "npm run sync && astro build && node scripts/check-build.mjs",
     "preview": "astro preview",
     "test": "node --test test/*.test.js",
-    "sync": "node scripts/sync-docs.mjs"
+    "sync": "node scripts/sync-docs.mjs && node scripts/gen-public.mjs",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name sovereign"
   },
   "dependencies": {
     "astro": "^5.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.151.3"
   }
 }
