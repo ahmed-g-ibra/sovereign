@@ -1,0 +1,24 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+terraform.tfvars
+*.auto.tfvars
+.terraform.lock.hcl.bak
+
+# Go
+/agent/bin/
+/agent/probe
+*.test
+*.out
+
+# Measurements (keep the code in git, not the data)
+*.ndjson
+/data/*
+
+# macOS
+.DS_Store
+!/data/.gitkeep

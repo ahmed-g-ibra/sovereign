@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "updated_at": "2026-10-21",
+  "targets": [
+    {
+      "id": "aws-me-south-1",
+      "provider": "aws",
+      "region": "me-south-1",
+      "country": "BH",
+      "city": "Manama",
+      "host": "s3.me-south-1.amazonaws.com",
+      "status": "live",
+      "note": "DNS resolves; TCP timed out from the first vantage point on 2026-10-21. Keep probing before concluding anything."
+    },
+    {
+      "id": "aws-me-central-1",
+      "provider": "aws",
+      "region": "me-central-1",
+      "country": "AE",
+      "city": "Dubai",
+      "host": "s3.me-central-1.amazonaws.com",
+      "status": "live"
+    },
+    {
+      "id": "aws-eu-central-1",
+      "provider": "aws",
+      "region": "eu-central-1",
+      "country": "DE",
+      "city": "Frankfurt",
+      "host": "s3.eu-central-1.amazonaws.com",
+      "status": "live",
+      "control": true,
+      "note": "Control. Most GCC traffic historically landed in Frankfurt; this is the number a local region has to beat."
+    },
+    {
+      "id": "aws-sa-pending",
+      "provider": "aws",
+      "region": "unconfirmed",
+      "country": "SA",
+      "city": "unconfirmed",
+      "host": "s3.me-central-2.amazonaws.com",
+      "status": "announced",
+      "note": "AWS targets December 2026 for its first Saudi region. Region code is a guess; confirm at launch and flip to live."
+    },
+    {
+      "id": "gcp-me-central1",
+      "provider": "gcp",
+      "region": "me-central1",
+      "country": "QA",
+      "city": "Doha",
+      "host": "storage.me-central1.rep.googleapis.com",
+      "status": "live",
+      "note": "Confirmed 2026-10-21. Google Cloud Storage regional endpoint."
+    },
+    {
+      "id": "gcp-me-central2",
+      "provider": "gcp",
+      "region": "me-central2",
+      "country": "SA",
+      "city": "Dammam",
+      "host": "storage.me-central2.rep.googleapis.com",
+      "status": "live",
+      "note": "Confirmed 2026-10-21."
+    },
+    {
+      "id": "gcp-europe-west3",
+      "provider": "gcp",
+      "region": "europe-west3",
+      "country": "DE",
+      "city": "Frankfurt",
+      "host": "storage.europe-west3.rep.googleapis.com",
+      "status": "live",
+      "control": true
+    },
+    {
+      "id": "oci-me-dubai-1",
+      "provider": "oci",
+      "region": "me-dubai-1",
+      "country": "AE",
+      "city": "Dubai",
+      "host": "objectstorage.me-dubai-1.oraclecloud.com",
+      "status": "live",
+      "note": "Confirmed 2026-10-21."
+    },
+    {
+      "id": "oci-me-abudhabi-1",
+      "provider": "oci",
+      "region": "me-abudhabi-1",
+      "country": "AE",
+      "city": "Abu Dhabi",
+      "host": "objectstorage.me-abudhabi-1.oraclecloud.com",
+      "status": "live",
+      "note": "Confirmed 2026-10-21."
+    },
+    {
+      "id": "oci-me-jeddah-1",
+      "provider": "oci",
+      "region": "me-jeddah-1",
+      "country": "SA",
+      "city": "Jeddah",
+      "host": "objectstorage.me-jeddah-1.oraclecloud.com",
+      "status": "live",
+      "note": "Confirmed 2026-10-21."
+    },
+    {
+      "id": "oci-me-riyadh-1",
+      "provider": "oci",
+      "region": "me-riyadh-1",
+      "country": "SA",
+      "city": "Riyadh",
+      "host": "objectstorage.me-riyadh-1.oraclecloud.com",
+      "status": "live",
+      "note": "Confirmed 2026-10-21."
+    },
+    {
+      "id": "oci-me-dcc-muscat-1",
+      "provider": "oci",
+      "region": "me-dcc-muscat-1",
+      "country": "OM",
+      "city": "Muscat",
+      "host": "objectstorage.me-dcc-muscat-1.oraclecloud.com",
+      "status": "rejected",
+      "note": "REJECTED 2026-10-21: NXDOMAIN. me-dcc-* are Dedicated Region deployments with no public endpoint, so Oman has no measurable in-country region today. Worth stating plainly on the site."
+    },
+    {
+      "id": "azure-global-arm",
+      "provider": "azure",
+      "region": "global",
+      "country": "XX",
+      "city": "anycast",
+      "host": "management.azure.com",
+      "status": "live",
+      "note": "Global anycast control only. Never present this as a regional Azure number."
+    },
+    {
+      "id": "azure-uaenorth-blob",
+      "provider": "azure",
+      "region": "uaenorth",
+      "country": "AE",
+      "city": "Dubai",
+      "host": "uaenorth.blob.core.windows.net",
+      "status": "rejected",
+      "note": "REJECTED 2026-10-21: NXDOMAIN. Confirms Azure publishes no per-region public endpoint; regional Azure numbers wait for Phase 2 responders."
+    },
+    {
+      "id": "azure-qatarcentral-blob",
+      "provider": "azure",
+      "region": "qatarcentral",
+      "country": "QA",
+      "city": "Doha",
+      "host": "qatarcentral.blob.core.windows.net",
+      "status": "rejected",
+      "note": "REJECTED 2026-10-21: resolves and serves TLS, but this is a storage account someone happens to have named 'qatarcentral', not an Azure regional endpoint. Measuring a stranger's bucket is not a methodology."
+    }
+  ]
+}
