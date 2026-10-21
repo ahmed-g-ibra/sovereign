@@ -1,0 +1,5 @@
+# Crawling is allowed on purpose: a crawler blocked here would never read
+# the noindex directive and could still list the URL from inbound links.
+# Indexing is refused by the robots meta tag and the X-Robots-Tag header.
+User-agent: *
+Allow: /

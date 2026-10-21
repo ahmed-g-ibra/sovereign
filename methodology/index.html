@@ -1,0 +1,132 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Methodology · Sovereign</title><meta name="description" content="What Sovereign measures, how, and the rules it holds itself to."><meta name="robots" content="noindex, nofollow"><link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📡</text></svg>"><link rel="stylesheet" href="/sovereign/_astro/methodology.DjygKWAW.css">
+<style>.doc table{font-size:.86rem}.doc li{margin:.25rem 0}.doc h2{border-bottom:1px solid var(--line);padding-bottom:.3rem}.doc blockquote{border-left:3px solid var(--line);margin-left:0;padding-left:1rem;color:var(--muted)}
+</style></head> <body> <header class="site"> <div class="wrap"> <a class="brand" href="/sovereign/">Sovereign</a> <nav> <a href="/sovereign/">Latency</a><a href="/sovereign/paths/">Paths</a><a href="/sovereign/residency/">Residency</a><a href="/sovereign/advisor/">Advisor</a><a href="/sovereign/methodology/" aria-current="page">Methodology</a><a href="/sovereign/contact/">Contact</a> </nav> </div> </header> <main class="wrap">  <article class="doc"> <!-- Generated from docs/ by scripts/sync-docs.mjs. Do not edit. -->
+<p>Published before the numbers, because a latency comparison nobody can audit is
+marketing.</p>
+<h2 id="what-is-measured">What is measured</h2>
+<p>Every probe, against every target, records four timings:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Timing</th><th>What it is</th></tr></thead><tbody><tr><td><strong>DNS</strong></td><td>time for the probe’s configured resolver to return an address</td></tr><tr><td><strong>TCP connect</strong></td><td>TCP handshake to port 443 of the resolved address</td></tr><tr><td><strong>TLS handshake</strong></td><td>full TLS handshake, measured separately from the connect</td></tr><tr><td><strong>Total</strong></td><td>the sum of the three</td></tr></tbody></table>
+<p>They are reported separately on purpose. A blended number tells you something is
+slow; the split tells you whether it is the ISP’s resolver, the path, or the
+endpoint.</p>
+<h2 id="path-measurement">Path measurement</h2>
+<p>Once an hour, each probe traces the path to every target: ICMP echo requests
+with the TTL raised one hop at a time, listening for the Time Exceeded
+messages routers send when a packet expires.</p>
+<p>Each hop records the responding address, the round-trip time, and the
+autonomous system announcing that address, resolved through Team Cymru’s
+public DNS service and cached for a week.</p>
+<p><strong>The AS path is what gets compared.</strong> Hop addresses churn — load balancers
+rotate them between probes, and many routers never answer — so change
+detection uses the ordered sequence of networks crossed, with consecutive
+duplicates collapsed and silent hops dropped. A path that stops crossing one
+transit network and starts crossing another is a real event; a router
+answering from a different address in the same network is not.</p>
+<p>A trace stops after five consecutive silent hops and is marked incomplete.
+That is recorded, not hidden: a truncated path must never be mistaken for a
+full one.</p>
+<p>Path measurement is best-effort. A probe that cannot open an ICMP socket keeps
+measuring latency and contributes no path data.</p>
+<h2 id="what-is-not-measured-yet">What is not measured (yet)</h2>
+<ul>
+<li><strong>Throughput.</strong> Latency and bandwidth are different questions, and a bandwidth
+test from volunteer hardware is both expensive and easy to get wrong.</li>
+<li><strong>Azure per-region.</strong> Azure publishes no consistent public per-region endpoint.
+Until Phase 2 deploys our own responders, Azure appears only as a global
+control.</li>
+<li><strong>Packet loss as a dedicated measurement.</strong> Loss is currently inferred from
+failed latency probes rather than measured with a sustained stream.</li>
+<li><strong>IPv6 paths.</strong> Traces are IPv4 only.</li>
+</ul>
+<h2 id="rules-we-hold-ourselves-to">Rules we hold ourselves to</h2>
+<ol>
+<li><strong>Percentiles, never averages.</strong> p50, p90, p95, p99 and the sample count. An
+average over a bimodal distribution describes a state the network was never in.</li>
+<li><strong>A silent probe is unknown, not down.</strong> Missing data and a failed
+measurement are different rows, displayed differently.</li>
+<li><strong>Failed probes never contribute timings.</strong> They count toward loss only.</li>
+<li><strong>A probe whose clock cannot be trusted is quarantined.</strong> The server
+compares the batch’s <code>sent_at</code> against its own clock. That measurement
+includes network transit, so it is an upper bound on skew rather than skew
+itself, and the threshold is a deliberately loose 2 seconds: it only ever
+catches a probe that is genuinely far out. Tighter measurement needs the
+agent to query NTP itself, which is not built yet. Quarantined data is
+stored and excluded from published figures, never deleted — the quarantine
+may turn out to be the thing that was wrong.</li>
+<li><strong>Probe host load is recorded with every sample.</strong> A busy VPS reports latency
+that belongs to its own CPU scheduler, and that data has to be discardable
+after the fact.</li>
+<li><strong>No single probe represents a country.</strong> Aggregates below a minimum sample
+count are not published.</li>
+<li><strong>Sequential measurement per probe.</strong> Parallel probes from one connection
+contend for the same uplink and measure each other.</li>
+<li><strong>IPv4 preferred for consistency.</strong> A host that silently switches between v4
+and v6 produces a step change that looks like a network event and is not one.</li>
+</ol>
+<h2 id="endpoint-selection">Endpoint selection</h2>
+<p><strong>Phase 1</strong> measures against each provider’s existing public regional endpoints.
+Free, immediate, and slightly out of our control: the vendor decides what sits
+behind that name.</p>
+<p><strong>Phase 2</strong> replaces them with our own responder deployed into each region by
+Terraform — a container that returns a timestamp. Identical software in every
+region on every provider, no reliance on vendor endpoint behaviour, and no
+traffic sent to anyone else’s service.</p>
+<p>Targets marked <code>verify</code> in <code>agent/targets.json</code> are documented patterns we have
+not confirmed. Run <code>probe -verify</code> and prune what fails; an endpoint that does
+not resolve is a finding worth recording, not a bug.</p>
+<h2 id="delivery-guarantees">Delivery guarantees</h2>
+<p>Ingest is <strong>at-least-once with idempotent writes</strong>. An agent that uploaded
+successfully but never saw the response will send the same batch again; the
+server deduplicates on (probe, target, timestamp), so a replay changes nothing.</p>
+<p>This is what lets the agent treat the network as unreliable without a
+distributed-transaction story. It buffers to disk before attempting any upload,
+keeps data until the server acknowledges it, and replays on reconnect — an
+outage produces a gap in <em>upload</em> time, never in measurement time.</p>
+<p>Rollups are recomputed rather than accumulated, for the same reason: a late
+batch has to correct the bucket it belongs to, not append a second one.</p>
+<h2 id="licence-and-reuse">Licence and reuse</h2>
+<p>The measurements are published under
+<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>: share and adapt
+them, including commercially, with credit. The code is MIT, which is a
+different licence for a different thing — see <code>LICENSE-DATA.md</code>.</p>
+<p>Every API response and every exported snapshot carries its licence and
+attribution string, so the terms travel with the data rather than living only
+on a page somebody has to find.</p>
+<p>When citing a figure, give the date it was taken. Latency measurements age,
+and every published figure carries a generation timestamp for that reason.</p>
+<h2 id="courtesy">Courtesy</h2>
+<p>Conservative intervals, no retries-on-retries, a real contact address on the
+site, and a published list of exactly which endpoints we touch. We are measuring
+networks, not stress-testing other people’s services.</p> </article>  </main> <footer class="site"> <div class="wrap"> <p>
+Independent latency and data-residency measurement for Gulf cloud regions.
+          Measurements from volunteer probes; methodology published in full.
+</p> <p> <span class="pill draft">unlisted</span>  Not indexed by search engines while the dataset and the
+            residency entries are still early.
+</p> <p> Data generated just now · window 7 days · <a href="/sovereign/methodology/">how this is measured</a> </p> <p> <a href="https://github.com/ahmed-g-ibra/sovereign">Source on GitHub</a> · measurements licensed
+ <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">CC BY 4.0</a>  — reuse them with credit. The software is MIT and licensed
+          separately. <a href="https://github.com/ahmed-g-ibra/sovereign/blob/main/LICENSE-DATA.md">Details</a> </p> </div> </footer> </body></html> 
