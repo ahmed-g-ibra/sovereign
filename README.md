@@ -5,9 +5,14 @@ Independent latency and data-residency intelligence for Gulf cloud regions.
 > Where is this workload allowed to live, and what does that choice cost me in
 > latency?
 
-This repository is **Phase 0**: a Terraform skeleton, CI/CD with no long-lived
-AWS credentials, a cost alarm, and a probe that measures real latency from a
-Gulf connection to every Middle East cloud region.
+**Phase 0** is a Terraform skeleton, CI/CD with no long-lived AWS credentials,
+a cost alarm, and a probe that measures real latency from a Gulf connection to
+every Middle East cloud region.
+
+**Phase 1** turns that probe into a fleet: a control plane that decides what to
+measure, Ed25519 probe enrolment, an ingest API with idempotent writes, disk
+buffering that survives an outage, and Postgres with partitioned samples and
+percentile rollups.
 
 Full plan: [`docs/build-plan.md`](docs/build-plan.md)
 
@@ -22,7 +27,8 @@ one-line change to `agent/targets.json`.
 ## Layout
 
 ```
-agent/      Go probe: times DNS, TCP and TLS to cloud regional endpoints
+agent/      Go probe: measures, buffers to disk, uploads signed batches
+api/        FastAPI control plane + ingest, Postgres schema and migrations
 infra/
   bootstrap/  S3 state bucket (local state, run once)
   aws/        GitHub OIDC roles + budget alarm (remote state)
@@ -69,6 +75,66 @@ go run ./cmd/probe -filter oci,sa       # Oracle regions in Saudi Arabia
 | `live` | region is GA and the endpoint is confirmed; measured by default |
 | `verify` | documented endpoint pattern, not yet confirmed; needs `-verify` or `-all` |
 | `announced` | region not open yet; kept so launch day is a status flip |
+
+## Running the fleet locally
+
+```bash
+# 1. Postgres on port 55432.
+docker compose up -d db
+
+# 2. Schema and seed data.
+cd api
+uv sync --extra dev
+export DATABASE_URL=postgresql://sovereign:sovereign@localhost:55432/sovereign
+uv run sovereign migrate
+
+# 3. Control plane.
+uv run uvicorn sovereign_api.app:create_app --factory --port 8000
+
+# 4. Mint an enrolment token (prints once; only its hash is stored).
+uv run sovereign issue-token --note "muscat home probe"
+
+# 5. Enrol a probe and start measuring.
+cd ../agent
+go run ./cmd/probe -register -server http://127.0.0.1:8000 \
+  -token "$TOKEN" -name muscat-home -country OM -city Muscat -isp Omantel -tier core
+go run ./cmd/probe -server http://127.0.0.1:8000
+```
+
+The agent generates its own Ed25519 keypair and sends only the public half, so
+the server never holds anything that could forge a measurement. Its identity
+and spool live under `agent/state/` (mode 0600).
+
+### Endpoints
+
+| Method | Path | Auth |
+|---|---|---|
+| `POST` | `/v1/probes/register` | enrolment token |
+| `GET` | `/v1/config` | probe signature |
+| `POST` | `/v1/samples` | probe signature |
+| `GET` | `/v1/matrix?window=24h` | public |
+| `GET` | `/v1/targets`, `/v1/probes`, `/healthz` | public |
+
+### Operator commands
+
+```bash
+uv run sovereign migrate                      # apply pending migrations
+uv run sovereign issue-token --uses 5         # mint an enrolment token
+uv run sovereign rollup --lookback 30         # recompute 5m and 1h buckets
+uv run sovereign partitions --drop-older-than 30
+```
+
+### What survives an outage
+
+Measurements are written to disk before any upload is attempted, and deleted
+only once the server acknowledges them. The agent also caches its config, so a
+probe that restarts while the control plane is down keeps measuring on its last
+known instructions. Ingest deduplicates on (probe, target, timestamp), so
+replaying a batch is free.
+
+Verified end to end: killing the API mid-run, restarting the agent cold, and
+bringing the server back replayed every buffered sample with zero duplicate
+rows.
 
 ## Infrastructure
 

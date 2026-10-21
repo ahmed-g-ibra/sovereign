@@ -29,8 +29,8 @@
       "city": "Frankfurt",
       "host": "s3.eu-central-1.amazonaws.com",
       "status": "live",
-      "control": true,
-      "note": "Control. Most GCC traffic historically landed in Frankfurt; this is the number a local region has to beat."
+      "note": "Control. Most GCC traffic historically landed in Frankfurt; this is the number a local region has to beat.",
+      "is_control": true
     },
     {
       "id": "aws-sa-pending",
@@ -70,7 +70,7 @@
       "city": "Frankfurt",
       "host": "storage.europe-west3.rep.googleapis.com",
       "status": "live",
-      "control": true
+      "is_control": true
     },
     {
       "id": "oci-me-dubai-1",

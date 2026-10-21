@@ -28,6 +28,10 @@ type Result struct {
 	TLSMs     float64   `json:"tls_ms"`
 	TotalMs   float64   `json:"total_ms"`
 	Error     string    `json:"error,omitempty"`
+
+	// HostLoad1 travels with the sample so that measurements taken while the
+	// probe host was busy can be identified and discarded later.
+	HostLoad1 float64 `json:"host_load1,omitempty"`
 }
 
 // OK reports whether the measurement completed end to end.

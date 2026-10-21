@@ -37,7 +37,7 @@ type Target struct {
 	Host     string `json:"host"`
 	Port     int    `json:"port"`
 	Status   string `json:"status"`
-	Control  bool   `json:"control,omitempty"`
+	Control  bool   `json:"is_control,omitempty"`
 	Note     string `json:"note,omitempty"`
 }
 

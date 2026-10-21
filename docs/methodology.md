@@ -34,7 +34,14 @@ endpoint.
 2. **A silent probe is unknown, not down.** Missing data and a failed
    measurement are different rows, displayed differently.
 3. **Failed probes never contribute timings.** They count toward loss only.
-4. **Clock skew over 500 ms quarantines a probe's data.**
+4. **A probe whose clock cannot be trusted is quarantined.** The server
+   compares the batch's `sent_at` against its own clock. That measurement
+   includes network transit, so it is an upper bound on skew rather than skew
+   itself, and the threshold is a deliberately loose 2 seconds: it only ever
+   catches a probe that is genuinely far out. Tighter measurement needs the
+   agent to query NTP itself, which is not built yet. Quarantined data is
+   stored and excluded from published figures, never deleted -- the quarantine
+   may turn out to be the thing that was wrong.
 5. **Probe host load is recorded with every sample.** A busy VPS reports latency
    that belongs to its own CPU scheduler, and that data has to be discardable
    after the fact.
@@ -59,6 +66,20 @@ traffic sent to anyone else's service.
 Targets marked `verify` in `agent/targets.json` are documented patterns we have
 not confirmed. Run `probe -verify` and prune what fails; an endpoint that does
 not resolve is a finding worth recording, not a bug.
+
+## Delivery guarantees
+
+Ingest is **at-least-once with idempotent writes**. An agent that uploaded
+successfully but never saw the response will send the same batch again; the
+server deduplicates on (probe, target, timestamp), so a replay changes nothing.
+
+This is what lets the agent treat the network as unreliable without a
+distributed-transaction story. It buffers to disk before attempting any upload,
+keeps data until the server acknowledges it, and replays on reconnect -- an
+outage produces a gap in *upload* time, never in measurement time.
+
+Rollups are recomputed rather than accumulated, for the same reason: a late
+batch has to correct the bucket it belongs to, not append a second one.
 
 ## Courtesy
 

@@ -22,3 +22,14 @@ terraform.tfvars
 # macOS
 .DS_Store
 !/data/.gitkeep
+
+# Agent runtime state: holds the probe's PRIVATE KEY and its spool.
+# Never commit this.
+/agent/state/
+**/state/identity.json
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/

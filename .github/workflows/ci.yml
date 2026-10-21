@@ -50,6 +50,41 @@ jobs:
           GOOS=linux GOARCH=arm64 go build -o /dev/null ./cmd/probe
           GOOS=linux GOARCH=amd64 go build -o /dev/null ./cmd/probe
 
+  api:
+    name: api (python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: sovereign
+          POSTGRES_PASSWORD: sovereign
+          POSTGRES_DB: sovereign
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sovereign"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      TEST_DATABASE_URL: postgresql://sovereign:sovereign@localhost:5432/sovereign_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: install
+        run: uv sync --extra dev
+
+      - name: test
+        run: uv run pytest -q
+
   terraform:
     name: terraform
     runs-on: ubuntu-latest
