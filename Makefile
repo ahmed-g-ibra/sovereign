@@ -57,6 +57,10 @@ site: snapshot ## Build the static site (dist/ is deployable as-is)
 site-dev: ## Run the site with live reload
 	cd web && npm run dev
 
+.PHONY: deploy-pages
+deploy-pages: ## Build with fresh data and publish to GitHub Pages
+	ops/deploy-pages.sh
+
 .PHONY: deploy
 deploy: snapshot ## Build with fresh data and upload to Cloudflare Pages
 	cd web && npm install --silent && npm run deploy

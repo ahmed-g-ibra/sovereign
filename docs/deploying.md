@@ -1,6 +1,35 @@
 # Deploying the site
 
-Cloudflare Pages, free tier, direct upload. No build minutes, no bandwidth
+Live at **https://ahmed-g-ibra.github.io/sovereign/** — unlisted.
+
+Two routes, both free. GitHub Pages is what is currently deployed; Cloudflare
+Pages is set up and would give a cleaner root URL.
+
+## GitHub Pages (current)
+
+```bash
+make deploy-pages
+```
+
+Builds with fresh data and force-pushes the output to the `gh-pages` branch,
+which holds build output only — the source stays on `main`.
+
+Three details that matter:
+
+- **The base path.** Pages serves a project site from `/sovereign/`, so the
+  build sets `PUBLIC_BASE`. Every internal link resolves through a helper and
+  the build fails if one forgets it.
+- **`.nojekyll`.** Pages runs Jekyll by default, and Jekyll skips directories
+  beginning with an underscore — which is every Astro asset. Without that file
+  the site loads with no styling and no JavaScript.
+- **`_headers` does not apply.** It is a Cloudflare directive file, so the
+  `X-Robots-Tag` header is not served here and the `noindex` meta tag is what
+  keeps the site out of search results. That is sufficient on its own; it is
+  belt-and-braces that only Cloudflare gets both.
+
+## Cloudflare Pages
+
+Free tier, direct upload. No build minutes, no bandwidth
 bill, no server. See [`costs.md`](costs.md) for what is still deferred.
 
 ## Why direct upload rather than a git build
