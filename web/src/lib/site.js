@@ -15,4 +15,17 @@ export const indexable = import.meta.env.PUBLIC_INDEXABLE === 'true';
 export const site = {
   name: 'Sovereign',
   tagline: 'Independent latency and data-residency measurement for Gulf cloud regions',
+  repo: 'https://github.com/ahmed-g-ibra/sovereign',
+  maintainer: 'Ahmed Gamal',
 };
+
+// A published address, set at build time so it is not hard-coded into the
+// repository where scrapers find it:
+//
+//   PUBLIC_CONTACT_EMAIL=you@example.com npm run build
+//
+// Unset, the contact page routes everything through GitHub issues, which is
+// the better channel for corrections anyway: public, threaded and citable.
+// The build refuses to produce an indexable site without one, because a
+// dataset nobody can challenge is not evidence.
+export const contactEmail = import.meta.env.PUBLIC_CONTACT_EMAIL || null;

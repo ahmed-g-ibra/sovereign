@@ -1,0 +1,109 @@
+---
+import Base from '../layouts/Base.astro';
+import { site, contactEmail } from '../lib/site.js';
+import { meta, probes } from '../lib/data.js';
+---
+
+<Base
+  title="Contact and corrections"
+  description="How to report an error, challenge a measurement, or run a probe."
+  current="/contact/"
+>
+  <h1>Contact and corrections</h1>
+  <p class="lede">
+    This site publishes measurements and legal summaries that affect real
+    architecture decisions. If something here is wrong, the fastest way to fix
+    it is to tell us, and every correction route below is a public one.
+  </p>
+
+  <h2>Report an error</h2>
+  <p>
+    <a href={`${site.repo}/issues/new`}>Open an issue</a> on GitHub. That is
+    the preferred channel for everything: a measurement that looks wrong, a
+    residency entry that misreads the law, a broken endpoint, a region we have
+    not added yet.
+  </p>
+  <p class="small muted">
+    Public and threaded, so a correction and its evidence stay attached to the
+    claim they fixed. Private email cannot do that.
+  </p>
+
+  {contactEmail ? (
+    <>
+      <h2>Private contact</h2>
+      <p>
+        For anything that should not start in public — a legal correction, a
+        security report, a network operator asking about our probing — write to{' '}
+        <a href={`mailto:${contactEmail}`}>{contactEmail}</a>.
+      </p>
+    </>
+  ) : (
+    <>
+      <h2>Private contact</h2>
+      <p class="muted">
+        No private address is published in this build. Use GitHub issues, or
+        set <code>PUBLIC_CONTACT_EMAIL</code> at build time to publish one.
+      </p>
+    </>
+  )}
+
+  <h2>If you operate a network we measure</h2>
+  <p>
+    We send a small number of ICMP echo requests and TLS handshakes on a fixed
+    schedule, to published endpoints, from a published list of probes. The full
+    method is in the <a href="/methodology/">methodology</a>, including every
+    endpoint we touch.
+  </p>
+  <p>
+    If our traffic is a problem for you, open an issue or write to us and we
+    will stop measuring your network. We are measuring the internet, not
+    testing anyone's patience.
+  </p>
+
+  <h2>Run a probe</h2>
+  <p>
+    The measurements are only as good as the number of vantage points. If you
+    have a connection in the Gulf — home, office, a small VPS — you can
+    contribute one. The agent is a single binary with no dependencies, it needs
+    no root, and it measures outbound only: it opens no ports and reads nothing
+    about your network beyond the route to a handful of cloud endpoints.
+  </p>
+  <p><a href={site.repo}>Source and setup instructions</a></p>
+  <p class="small muted">
+    {probes.length === 1
+      ? 'There is currently one probe. Every additional one makes every figure on this site more defensible.'
+      : `There are currently ${probes.length} probes.`}
+  </p>
+
+  <h2>What this is not</h2>
+  <ul>
+    <li>
+      <strong>Not legal advice.</strong> The residency pages summarise
+      legislation for engineers choosing a region. They are not a substitute
+      for a qualified practitioner in the relevant jurisdiction, and several
+      entries are explicitly marked draft.
+    </li>
+    <li>
+      <strong>Not a cloud provider ranking.</strong> Latency from one set of
+      vantage points is one input among many.
+    </li>
+    <li>
+      <strong>Not affiliated</strong> with any cloud provider, telecom operator
+      or regulator.
+    </li>
+  </ul>
+
+  <h2>Who maintains this</h2>
+  <p>
+    {site.maintainer}, from Muscat. The project is open source; the
+    measurement code, the residency entries and the rules behind the advisor
+    are all in <a href={site.repo}>the repository</a>, and so is the history of
+    every change to them.
+  </p>
+
+  {meta.generated_at && (
+    <p class="small muted">
+      The data on this site was exported on {new Date(meta.generated_at).toISOString().slice(0, 16).replace('T', ' ')} UTC.
+    </p>
+  )}
+</Base>

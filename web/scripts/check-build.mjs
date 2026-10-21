@@ -33,6 +33,20 @@ for (const page of pages) {
   if (!indexable && !hasNoindex) problems.push(`${rel}: missing the noindex meta tag`);
 }
 
+// A site that invites people to challenge its numbers must say how. Refusing
+// to build an indexable site without a contact address keeps that honest.
+const contactPage = join(dist, 'contact', 'index.html');
+try {
+  const contact = readFileSync(contactPage, 'utf8');
+  if (indexable && !/mailto:/.test(contact)) {
+    problems.push(
+      'contact page publishes no email, but indexing is on; ' +
+      'set PUBLIC_CONTACT_EMAIL');
+  }
+} catch {
+  problems.push('contact/index.html is missing');
+}
+
 const headers = readFileSync(join(dist, '_headers'), 'utf8');
 const headerNoindex = headers.includes('X-Robots-Tag: noindex');
 if (indexable && headerNoindex) problems.push('_headers: X-Robots-Tag set but indexing is on');

@@ -268,8 +268,19 @@ Phase 0 runs at roughly **$5/month** — Route 53, a little S3, free-tier RDS wh
 it arrives. The budget alarm defaults to a $50 ceiling with alerts at 50%, 80%,
 100% and on forecast overrun. Raise it deliberately, never by surprise.
 
+## Licence
+
+Code and content in this repository are MIT licensed — see [LICENSE](LICENSE).
+That covers the agent, the API, the site and the residency entries.
+
+**The measurement dataset is a separate question and is currently undecided.**
+If you want the latency and path data to be citable and reusable, it needs its
+own licence (CC BY 4.0 is the usual choice for this kind of dataset, and
+attribution is the point of publishing it). Decide before anyone builds on it.
+
 ## Conventions
 
 - Decisions with a real alternative get an ADR in `docs/adr/`.
+- Corrections are welcome and go through issues — see the contact page.
 - The methodology is published before the numbers.
 - Measurement data stays out of git.
