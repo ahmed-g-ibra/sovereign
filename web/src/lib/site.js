@@ -29,3 +29,14 @@ export const site = {
 // The build refuses to produce an indexable site without one, because a
 // dataset nobody can challenge is not evidence.
 export const contactEmail = import.meta.env.PUBLIC_CONTACT_EMAIL || null;
+
+// Prefix an internal path with the deployment's base.
+//
+// Astro rewrites asset URLs for you but leaves hand-written hrefs alone, so
+// every internal link goes through here. Without it a project-site deploy at
+// /sovereign/ yields a site where nothing but the home page resolves.
+export function u(path = '/') {
+  const base = import.meta.env.BASE_URL || '/';
+  if (!path.startsWith('/')) return path;
+  return (base.endsWith('/') ? base.slice(0, -1) : base) + path;
+}

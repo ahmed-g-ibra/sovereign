@@ -1,6 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
-import { site, contactEmail } from '../lib/site.js';
+import { site, contactEmail, u } from '../lib/site.js';
 import { meta, probes } from '../lib/data.js';
 ---
 
@@ -46,7 +46,7 @@ import { meta, probes } from '../lib/data.js';
   <p>
     We send a small number of ICMP echo requests and TLS handshakes on a fixed
     schedule, to published endpoints, from a published list of probes. The full
-    method is in the <a href="/methodology/">methodology</a>, including every
+    method is in the <a href={u('/methodology/')}>methodology</a>, including every
     endpoint we touch.
   </p>
   <p>

@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../..');
+const site_repo = 'https://github.com/ahmed-g-ibra/sovereign';
 
 const pages = [
   {
@@ -21,7 +22,13 @@ const pages = [
 ];
 
 for (const page of pages) {
-  const body = readFileSync(page.src, 'utf8').replace(/^#\s+.*\n/, '');
+  // Links in docs/ point at repository paths. On the site they must point at
+  // pages, and at the deployment's base path.
+  const base = (process.env.PUBLIC_BASE || '/').replace(/\/$/, '');
+  const body = readFileSync(page.src, 'utf8')
+    .replace(/^#\s+.*\n/, '')
+    .replace(/\]\(costs\.md\)/g, `](${base}/methodology/)`)
+    .replace(/\]\(adr\//g, `](${site_repo}/blob/main/docs/adr/`);
   const frontmatter = [
     '---',
     'layout: ../layouts/Doc.astro',

@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { flag } from '../../lib/format.js';
+import { u } from '../../lib/site.js';
 
 export function getStaticPaths() {
   // Loaded through glob rather than a direct import so that a checkout with no
@@ -35,7 +36,7 @@ const paragraphs = entry.body
   description={`Data residency rules for ${entry.country_name}: ${entry.instrument}`}
   current="/residency/"
 >
-  <p class="small"><a href="/residency/">← All countries</a></p>
+  <p class="small"><a href={u('/residency/')}>← All countries</a></p>
   <h1>{flag(entry.country)} {entry.country_name}</h1>
 
   {entry.status === 'draft' && (

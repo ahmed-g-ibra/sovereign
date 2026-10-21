@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import { residency, meta } from '../../lib/data.js';
 import { flag } from '../../lib/format.js';
+import { u } from '../../lib/site.js';
 
 const entries = Object.values(residency);
 const drafts = entries.filter((e) => e.status === 'draft');
@@ -45,7 +46,7 @@ const drafts = entries.filter((e) => e.status === 'draft');
         {entries.map((e) => (
           <tr>
             <td>
-              <a href={`/residency/${e.country.toLowerCase()}/`}>
+              <a href={u(`/residency/${e.country.toLowerCase()}/`)}>
                 {flag(e.country)} {e.country_name}
               </a>
             </td>

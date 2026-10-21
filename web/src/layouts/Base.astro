@@ -2,7 +2,7 @@
 import '../styles/global.css';
 import { meta } from '../lib/data.js';
 import { ago } from '../lib/format.js';
-import { indexable, site } from '../lib/site.js';
+import { indexable, site, u } from '../lib/site.js';
 
 const { title, description, current } = Astro.props;
 const nav = [
@@ -28,10 +28,10 @@ const nav = [
   <body>
     <header class="site">
       <div class="wrap">
-        <a class="brand" href="/">Sovereign</a>
+        <a class="brand" href={u('/')}>Sovereign</a>
         <nav>
           {nav.map(([href, label]) => (
-            <a href={href} aria-current={current === href ? 'page' : undefined}>{label}</a>
+            <a href={u(href)} aria-current={current === href ? 'page' : undefined}>{label}</a>
           ))}
         </nav>
       </div>
@@ -56,7 +56,7 @@ const nav = [
         )}
         <p>
           {meta.generated_at
-            ? <>Data generated {ago(meta.generated_at)} · window {meta.window} · <a href="/methodology/">how this is measured</a></>
+            ? <>Data generated {ago(meta.generated_at)} · window {meta.window} · <a href={u('/methodology/')}>how this is measured</a></>
             : <>No snapshot built into this site yet.</>}
         </p>
         <p>

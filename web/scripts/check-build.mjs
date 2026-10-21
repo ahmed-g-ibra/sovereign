@@ -47,6 +47,23 @@ try {
   problems.push('contact/index.html is missing');
 }
 
+// Every internal link must carry the deployment's base path. A project-site
+// deploy at /sovereign/ turns one forgotten prefix into a 404, and the home
+// page is the one page that looks fine either way -- so this is easy to ship
+// broken and only notice from someone else's bug report.
+const base = (process.env.PUBLIC_BASE || '/').replace(/\/$/, '');
+if (base) {
+  for (const page of pages) {
+    const html = readFileSync(page, 'utf8');
+    const rel = page.replace(dist + '/', '');
+    for (const [, href] of html.matchAll(/href="(\/[^"]*)"/g)) {
+      if (href.startsWith(base + '/') || href === base) continue;
+      if (href.startsWith('//')) continue; // protocol-relative, external
+      problems.push(`${rel}: link "${href}" is missing the base path "${base}"`);
+    }
+  }
+}
+
 const headers = readFileSync(join(dist, '_headers'), 'utf8');
 const headerNoindex = headers.includes('X-Robots-Tag: noindex');
 if (indexable && headerNoindex) problems.push('_headers: X-Robots-Tag set but indexing is on');

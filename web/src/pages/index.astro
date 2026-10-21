@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { meta, deployable, controls, probes, hasData } from '../lib/data.js';
 import { ms, pct, band, flag, providerName, ago } from '../lib/format.js';
+import { u } from '../lib/site.js';
 
 const stats = meta.stats ?? {};
 const days =
@@ -119,7 +120,7 @@ const reporting = probes.filter((p) => p.reporting).length;
         The fastest region measured is <strong>{fastest.region}</strong>
         ({providerName(fastest.provider)}) at {ms(fastest.p50_ms)} ms median.
         Where a region is unusually fast it is normally because the probe's ISP
-        peers directly with that provider — the <a href="/paths/">path data</a>
+        peers directly with that provider — the <a href={u('/paths/')}>path data</a>
         shows which networks each route crosses.
       </p>
       <p class="small muted">
